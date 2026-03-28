@@ -1,7 +1,8 @@
 use eframe::egui::{self, RichText};
 
-use super::{ContentMode, MainContentView, RepeatKind};
+use super::{ContentMode, MainContentView};
 use crate::models::check_source_type::CheckSourceType;
+use crate::models::CheckRepeatType;
 use crate::ui::theme::Theme;
 
 impl MainContentView {
@@ -54,19 +55,22 @@ impl MainContentView {
     fn show_new_check_repeat_selector(&mut self, ui: &mut egui::Ui, theme: &Theme) {
         ui.label(RichText::new("Repeat").color(theme.text_secondary));
         egui::ComboBox::from_id_salt("new_check_repeat_kind")
-            .selected_text(self.new_check_draft.repeat_kind.label())
+            .selected_text(repeat_label(&self.new_check_draft.repeat_case))
             .show_ui(ui, |ui| {
-                for kind in [
-                    RepeatKind::Everytime,
-                    RepeatKind::Conditional,
-                    RepeatKind::Specific,
-                    RepeatKind::Until,
+                for repeat_case in [
+                    CheckRepeatType::Everytime,
+                    CheckRepeatType::Conditional(1),
+                    CheckRepeatType::Specific(1),
+                    CheckRepeatType::Until(1),
                 ] {
                     if ui
-                        .selectable_label(self.new_check_draft.repeat_kind == kind, kind.label())
+                        .selectable_label(
+                            same_repeat_variant(&self.new_check_draft.repeat_case, &repeat_case),
+                            repeat_label(&repeat_case),
+                        )
                         .clicked()
                     {
-                        self.new_check_draft.repeat_kind = kind;
+                        self.new_check_draft.repeat_case = repeat_case;
                         self.normalize_repeat_value();
                     }
                 }
@@ -74,7 +78,7 @@ impl MainContentView {
     }
 
     fn show_new_check_repeat_value(&mut self, ui: &mut egui::Ui, theme: &Theme) {
-        if self.new_check_draft.repeat_kind != RepeatKind::Everytime {
+        if repeat_requires_value(&self.new_check_draft.repeat_case) {
             labeled_text_edit(
                 ui,
                 theme,
@@ -131,7 +135,7 @@ impl MainContentView {
     }
 
     fn normalize_repeat_value(&mut self) {
-        if self.new_check_draft.repeat_kind == RepeatKind::Everytime {
+        if !repeat_requires_value(&self.new_check_draft.repeat_case) {
             self.new_check_draft.repeat_value.clear();
         } else if self.new_check_draft.repeat_value.trim().is_empty() {
             self.new_check_draft.repeat_value = "1".to_string();
@@ -140,17 +144,6 @@ impl MainContentView {
 
     fn reset_new_check_form(&mut self) {
         self.new_check_draft = Default::default();
-    }
-}
-
-impl RepeatKind {
-    pub(super) fn label(&self) -> &'static str {
-        match self {
-            RepeatKind::Everytime => "Everytime",
-            RepeatKind::Conditional => "Conditional",
-            RepeatKind::Specific => "Specific",
-            RepeatKind::Until => "Until",
-        }
     }
 }
 
@@ -181,4 +174,27 @@ fn source_label(source: &CheckSourceType) -> &'static str {
         CheckSourceType::Blueprint => "Blueprint",
         CheckSourceType::Turn => "Turn",
     }
+}
+
+fn repeat_label(repeat_case: &CheckRepeatType) -> &'static str {
+    match repeat_case {
+        CheckRepeatType::Everytime => "Everytime",
+        CheckRepeatType::Conditional(_) => "Conditional",
+        CheckRepeatType::Specific(_) => "Specific",
+        CheckRepeatType::Until(_) => "Until",
+    }
+}
+
+fn repeat_requires_value(repeat_case: &CheckRepeatType) -> bool {
+    !matches!(repeat_case, CheckRepeatType::Everytime)
+}
+
+fn same_repeat_variant(left: &CheckRepeatType, right: &CheckRepeatType) -> bool {
+    matches!(
+        (left, right),
+        (CheckRepeatType::Everytime, CheckRepeatType::Everytime)
+            | (CheckRepeatType::Conditional(_), CheckRepeatType::Conditional(_))
+            | (CheckRepeatType::Specific(_), CheckRepeatType::Specific(_))
+            | (CheckRepeatType::Until(_), CheckRepeatType::Until(_))
+    )
 }

@@ -27,19 +27,11 @@ struct NewCheckDraft {
     name: String,
     detail: String,
     source: CheckSourceType,
-    repeat_kind: RepeatKind,
+    repeat_case: CheckRepeatType,
     repeat_value: String,
     position: String,
     is_mandatory: bool,
     is_checked: bool,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum RepeatKind {
-    Everytime,
-    Conditional,
-    Specific,
-    Until,
 }
 
 impl MainContentView {
@@ -98,7 +90,7 @@ impl Default for NewCheckDraft {
             name: String::new(),
             detail: String::new(),
             source: CheckSourceType::Game,
-            repeat_kind: RepeatKind::Everytime,
+            repeat_case: CheckRepeatType::Everytime,
             repeat_value: String::new(),
             position: "0".to_string(),
             is_mandatory: false,
@@ -120,16 +112,15 @@ impl NewCheckDraft {
             .parse::<i32>()
             .map_err(|_| "Position must be a valid integer.".to_string())?;
 
-        let repeat_case = match self.repeat_kind {
-            RepeatKind::Everytime => CheckRepeatType::Everytime,
-            RepeatKind::Conditional => CheckRepeatType::Conditional(parse_positive_i32(
-                &self.repeat_value,
-                "Repeat value",
-            )?),
-            RepeatKind::Specific => {
+        let repeat_case = match self.repeat_case {
+            CheckRepeatType::Everytime => CheckRepeatType::Everytime,
+            CheckRepeatType::Conditional(_) => {
+                CheckRepeatType::Conditional(parse_positive_i32(&self.repeat_value, "Repeat value")?)
+            }
+            CheckRepeatType::Specific(_) => {
                 CheckRepeatType::Specific(parse_positive_i32(&self.repeat_value, "Repeat value")?)
             }
-            RepeatKind::Until => {
+            CheckRepeatType::Until(_) => {
                 CheckRepeatType::Until(parse_positive_i32(&self.repeat_value, "Repeat value")?)
             }
         };
@@ -170,7 +161,7 @@ fn trimmed_option(value: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{NewCheckDraft, RepeatKind};
+    use super::NewCheckDraft;
     use crate::models::CheckRepeatType;
 
     #[test]
@@ -191,7 +182,7 @@ mod tests {
     fn draft_requires_positive_repeat_value() {
         let draft = NewCheckDraft {
             name: "Scout".to_string(),
-            repeat_kind: RepeatKind::Until,
+            repeat_case: CheckRepeatType::Until(1),
             repeat_value: "0".to_string(),
             ..Default::default()
         };
@@ -204,7 +195,7 @@ mod tests {
     fn draft_builds_non_default_repeat_type() {
         let draft = NewCheckDraft {
             name: "Scout".to_string(),
-            repeat_kind: RepeatKind::Specific,
+            repeat_case: CheckRepeatType::Specific(1),
             repeat_value: "4".to_string(),
             ..Default::default()
         };

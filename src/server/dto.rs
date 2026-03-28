@@ -11,6 +11,20 @@ pub(super) struct HealthResponse {
     pub server_time: DateTime<Utc>,
 }
 
+#[derive(Debug, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct SyncConnectRequest {
+    #[allow(dead_code)]
+    pub device_id: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct SyncConnectResponse {
+    pub ok: bool,
+    pub server_time: DateTime<Utc>,
+}
+
 #[derive(Debug, Deserialize)]
 pub(super) struct SyncPullQuery {
     #[allow(dead_code)]

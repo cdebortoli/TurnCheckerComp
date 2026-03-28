@@ -57,14 +57,33 @@ fn configure_connection(connection: &Connection) -> Result<()> {
         CREATE TABLE IF NOT EXISTS comments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             comment_type TEXT NOT NULL,
-            content TEXT NOT NULL
+            content TEXT NOT NULL,
+            is_sent INTEGER NOT NULL DEFAULT 0
         );
 
         CREATE INDEX IF NOT EXISTS idx_tags_uuid ON tags(uuid);
         CREATE INDEX IF NOT EXISTS idx_checks_uuid ON checks(uuid);
         CREATE INDEX IF NOT EXISTS idx_comments_type ON comments(comment_type);
-        "
+        ",
     )?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+
+    use super::establish_in_memory_connection;
+
+    #[test]
+    fn comments_schema_contains_is_sent() -> Result<()> {
+        let connection = establish_in_memory_connection()?;
+        let mut statement = connection.prepare("PRAGMA table_info(comments)")?;
+        let columns = statement.query_map([], |row| row.get::<_, String>(1))?;
+        let columns = columns.collect::<rusqlite::Result<Vec<_>>>()?;
+
+        assert!(columns.iter().any(|column| column == "is_sent"));
+        Ok(())
+    }
 }

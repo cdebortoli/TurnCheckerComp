@@ -30,6 +30,7 @@ pub struct Comment {
     #[serde(rename = "type")]
     pub comment_type: CommentType,
     pub content: String,
+    pub is_sent: bool,
 }
 
 impl Comment {
@@ -38,6 +39,7 @@ impl Comment {
             id: 0,
             comment_type,
             content: content.into(),
+            is_sent: false,
         }
     }
 }

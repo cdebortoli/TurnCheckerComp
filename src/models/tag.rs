@@ -1,0 +1,30 @@
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Tag {
+    pub id: i64,
+    pub uuid: Uuid,
+    pub name: String,
+    pub color: String,
+    pub text_color: String,
+}
+
+impl Tag {
+    pub fn new(name: impl Into<String>, color: impl Into<String>, text_color: impl Into<String>) -> Self {
+        Self {
+            id: 0,
+            uuid: Uuid::new_v4(),
+            name: name.into(),
+            color: color.into(),
+            text_color: text_color.into(),
+        }
+    }
+}
+
+impl Default for Tag {
+    fn default() -> Self {
+        Self::new("", "#000000", "#FFFFFF")
+    }
+}

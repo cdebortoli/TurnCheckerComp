@@ -4,6 +4,11 @@ use std::path::PathBuf;
 use anyhow::Result;
 use rusqlite::Connection;
 
+use crate::database::checks;
+use crate::models::Check;
+
+const INSERT_DEBUG_UNSENT_CHECK_ON_CREATE: bool = false;
+
 pub fn database_path() -> PathBuf {
     std::env::current_dir()
         .unwrap_or_else(|_| PathBuf::from("."))
@@ -25,8 +30,10 @@ pub fn establish_connection_at(path: PathBuf) -> Result<Connection> {
         fs::create_dir_all(parent)?;
     }
 
+    let is_new_database = !path.exists();
     let connection = Connection::open(path)?;
     configure_connection(&connection)?;
+    maybe_insert_debug_unsent_check(&connection, is_new_database)?;
     Ok(connection)
 }
 
@@ -114,6 +121,22 @@ fn configure_connection(connection: &Connection) -> Result<()> {
     Ok(())
 }
 
+fn maybe_insert_debug_unsent_check(connection: &Connection, is_new_database: bool) -> Result<()> {
+    if INSERT_DEBUG_UNSENT_CHECK_ON_CREATE && is_new_database {
+        insert_debug_unsent_check(connection)?;
+    }
+
+    Ok(())
+}
+
+fn insert_debug_unsent_check(connection: &Connection) -> Result<()> {
+    let mut check = Check::new("Debug unsent check");
+    check.detail = Some("Inserted automatically for startup debug flows.".to_string());
+    check.is_sent = false;
+    checks::insert(connection, &check)?;
+    Ok(())
+}
+
 fn count_unsent_records(connection: &Connection) -> Result<usize> {
     let checks: i64 =
         connection.query_row("SELECT COUNT(*) FROM checks WHERE is_sent = 0", [], |row| {
@@ -153,7 +176,8 @@ mod tests {
     use anyhow::Result;
 
     use super::{
-        establish_connection_at, inspect_startup_state_at, reset_database_at, DatabaseStartupState,
+        establish_connection_at, establish_in_memory_connection, insert_debug_unsent_check,
+        inspect_startup_state_at, reset_database_at, DatabaseStartupState,
     };
     use crate::database::checks;
     use crate::models::Check;
@@ -198,6 +222,37 @@ mod tests {
 
         let connection = establish_connection_at(db_path)?;
         assert!(checks::fetch_all(&connection)?.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn debug_unsent_check_is_inserted_only_when_explicitly_requested() -> Result<()> {
+        let connection = establish_in_memory_connection()?;
+
+        insert_debug_unsent_check(&connection)?;
+        assert_eq!(checks::fetch_all(&connection)?.len(), 1);
+        assert_eq!(checks::fetch_unsent(&connection, None)?.len(), 1);
+
+        insert_debug_unsent_check(&connection)?;
+        assert_eq!(checks::fetch_all(&connection)?.len(), 2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn reopening_existing_database_does_not_add_rows_when_debug_seed_is_disabled() -> Result<()> {
+        let temp_dir =
+            std::env::temp_dir().join(format!("turn-checker-reopen-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&temp_dir)?;
+        let db_path = temp_dir.join("reopen.db");
+
+        let connection = establish_connection_at(db_path.clone())?;
+        assert!(checks::fetch_all(&connection)?.is_empty());
+        drop(connection);
+
+        let reopened = establish_connection_at(db_path)?;
+        assert!(checks::fetch_all(&reopened)?.is_empty());
 
         Ok(())
     }

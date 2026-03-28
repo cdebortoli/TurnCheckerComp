@@ -9,6 +9,7 @@ pub struct Tag {
     pub name: String,
     pub color: String,
     pub text_color: String,
+    pub is_sent: bool,
 }
 
 impl Tag {
@@ -19,6 +20,7 @@ impl Tag {
             name: name.into(),
             color: color.into(),
             text_color: text_color.into(),
+            is_sent: false,
         }
     }
 }

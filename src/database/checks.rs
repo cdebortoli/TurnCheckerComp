@@ -38,6 +38,32 @@ pub fn fetch_all(connection: &Connection) -> Result<Vec<Check>> {
     Ok(checks)
 }
 
+pub fn fetch_unsent(connection: &Connection, limit: Option<usize>) -> Result<Vec<Check>> {
+    match limit {
+        Some(limit) => {
+            let mut statement = connection.prepare(
+                "SELECT id, uuid, name, detail, repeat_type, repeat_value, position, is_mandatory, is_checked, is_sent
+                 FROM checks
+                 WHERE is_sent = 0
+                 ORDER BY position, name
+                 LIMIT ?1",
+            )?;
+            let rows = statement.query_map([limit as i64], row_to_check)?;
+            Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+        }
+        None => {
+            let mut statement = connection.prepare(
+                "SELECT id, uuid, name, detail, repeat_type, repeat_value, position, is_mandatory, is_checked, is_sent
+                 FROM checks
+                 WHERE is_sent = 0
+                 ORDER BY position, name",
+            )?;
+            let rows = statement.query_map([], row_to_check)?;
+            Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+        }
+    }
+}
+
 pub fn fetch_by_uuid(connection: &Connection, uuid: &uuid::Uuid) -> Result<Option<Check>> {
     let mut statement = connection.prepare(
         "SELECT id, uuid, name, detail, repeat_type, repeat_value, position, is_mandatory, is_checked, is_sent
@@ -49,6 +75,32 @@ pub fn fetch_by_uuid(connection: &Connection, uuid: &uuid::Uuid) -> Result<Optio
         .query_row([uuid.to_string()], row_to_check)
         .optional()?;
     Ok(check)
+}
+
+pub fn upsert(connection: &Connection, check: &Check) -> Result<i64> {
+    if let Some(existing) = fetch_by_uuid(connection, &check.uuid)? {
+        let (repeat_type, repeat_value) = check.repeat_case.to_storage();
+        connection.execute(
+            "UPDATE checks
+             SET name = ?1, detail = ?2, repeat_type = ?3, repeat_value = ?4, position = ?5,
+                 is_mandatory = ?6, is_checked = ?7, is_sent = ?8
+             WHERE uuid = ?9",
+            params![
+                check.name,
+                check.detail,
+                repeat_type,
+                repeat_value,
+                check.position,
+                bool_to_sqlite(check.is_mandatory),
+                bool_to_sqlite(check.is_checked),
+                bool_to_sqlite(check.is_sent),
+                check.uuid.to_string(),
+            ],
+        )?;
+        Ok(existing.id)
+    } else {
+        insert(connection, check)
+    }
 }
 
 pub fn update(connection: &Connection, check: &Check) -> Result<()> {
@@ -73,6 +125,18 @@ pub fn update(connection: &Connection, check: &Check) -> Result<()> {
     )?;
 
     Ok(())
+}
+
+pub fn mark_sent_by_uuids(connection: &Connection, uuids: &[uuid::Uuid]) -> Result<usize> {
+    let mut updated = 0;
+    for uuid in uuids {
+        updated += connection.execute(
+            "UPDATE checks SET is_sent = 1 WHERE uuid = ?1",
+            [uuid.to_string()],
+        )?;
+    }
+
+    Ok(updated)
 }
 
 pub fn delete(connection: &Connection, id: i64) -> Result<()> {

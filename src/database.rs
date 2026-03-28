@@ -7,7 +7,9 @@ use anyhow::Result;
 use rusqlite::Connection;
 
 #[allow(unused_imports)]
-pub use connection::{database_path, establish_connection, establish_in_memory_connection};
+pub use connection::{
+    database_path, establish_connection, establish_connection_at, establish_in_memory_connection,
+};
 
 pub fn init_database() -> Result<()> {
     let _connection = establish_connection()?;

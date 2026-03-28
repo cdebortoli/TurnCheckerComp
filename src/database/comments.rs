@@ -5,8 +5,9 @@ use crate::models::{Comment, CommentType};
 
 pub fn insert(connection: &Connection, comment: &Comment) -> Result<i64> {
     connection.execute(
-        "INSERT INTO comments (comment_type, content, is_sent) VALUES (?1, ?2, ?3)",
+        "INSERT INTO comments (uuid, comment_type, content, is_sent) VALUES (?1, ?2, ?3, ?4)",
         params![
+            comment.uuid.to_string(),
             comment.comment_type.as_str(),
             comment.content,
             bool_to_sqlite(comment.is_sent)
@@ -18,25 +19,73 @@ pub fn insert(connection: &Connection, comment: &Comment) -> Result<i64> {
 
 pub fn fetch_all(connection: &Connection) -> Result<Vec<Comment>> {
     let mut statement =
-        connection.prepare("SELECT id, comment_type, content, is_sent FROM comments ORDER BY id")?;
+        connection.prepare("SELECT id, uuid, comment_type, content, is_sent FROM comments ORDER BY id")?;
     let rows = statement.query_map([], row_to_comment)?;
 
     let comments = rows.collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(comments)
 }
 
-pub fn fetch_by_id(connection: &Connection, id: i64) -> Result<Option<Comment>> {
-    let mut statement =
-        connection.prepare("SELECT id, comment_type, content, is_sent FROM comments WHERE id = ?1")?;
+pub fn fetch_unsent(connection: &Connection, limit: Option<usize>) -> Result<Vec<Comment>> {
+    match limit {
+        Some(limit) => {
+            let mut statement = connection.prepare(
+                "SELECT id, uuid, comment_type, content, is_sent
+                 FROM comments
+                 WHERE is_sent = 0
+                 ORDER BY id
+                 LIMIT ?1",
+            )?;
+            let rows = statement.query_map([limit as i64], row_to_comment)?;
+            Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+        }
+        None => {
+            let mut statement = connection.prepare(
+                "SELECT id, uuid, comment_type, content, is_sent
+                 FROM comments
+                 WHERE is_sent = 0
+                 ORDER BY id",
+            )?;
+            let rows = statement.query_map([], row_to_comment)?;
+            Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+        }
+    }
+}
 
-    let comment = statement.query_row([id], row_to_comment).optional()?;
+pub fn fetch_by_uuid(connection: &Connection, uuid: &uuid::Uuid) -> Result<Option<Comment>> {
+    let mut statement =
+        connection.prepare(
+            "SELECT id, uuid, comment_type, content, is_sent FROM comments WHERE uuid = ?1"
+        )?;
+
+    let comment = statement
+        .query_row([uuid.to_string()], row_to_comment)
+        .optional()?;
     Ok(comment)
+}
+
+pub fn upsert(connection: &Connection, comment: &Comment) -> Result<i64> {
+    if let Some(existing) = fetch_by_uuid(connection, &comment.uuid)? {
+        connection.execute(
+            "UPDATE comments SET comment_type = ?1, content = ?2, is_sent = ?3 WHERE uuid = ?4",
+            params![
+                comment.comment_type.as_str(),
+                comment.content,
+                bool_to_sqlite(comment.is_sent),
+                comment.uuid.to_string()
+            ],
+        )?;
+        Ok(existing.id)
+    } else {
+        insert(connection, comment)
+    }
 }
 
 pub fn update(connection: &Connection, comment: &Comment) -> Result<()> {
     connection.execute(
-        "UPDATE comments SET comment_type = ?1, content = ?2, is_sent = ?3 WHERE id = ?4",
+        "UPDATE comments SET uuid = ?1, comment_type = ?2, content = ?3, is_sent = ?4 WHERE id = ?5",
         params![
+            comment.uuid.to_string(),
             comment.comment_type.as_str(),
             comment.content,
             bool_to_sqlite(comment.is_sent),
@@ -51,14 +100,31 @@ pub fn delete(connection: &Connection, id: i64) -> Result<()> {
     Ok(())
 }
 
+pub fn mark_sent_by_uuids(connection: &Connection, uuids: &[uuid::Uuid]) -> Result<usize> {
+    let mut updated = 0;
+    for uuid in uuids {
+        updated += connection.execute(
+            "UPDATE comments SET is_sent = 1 WHERE uuid = ?1",
+            [uuid.to_string()],
+        )?;
+    }
+
+    Ok(updated)
+}
+
 fn row_to_comment(row: &Row<'_>) -> rusqlite::Result<Comment> {
-    let raw_type: String = row.get(1)?;
+    let raw_type: String = row.get(2)?;
     Ok(Comment {
         id: row.get(0)?,
+        uuid: parse_uuid(row.get(1)?),
         comment_type: CommentType::from_str(&raw_type),
-        content: row.get(2)?,
-        is_sent: sqlite_to_bool(row.get(3)?),
+        content: row.get(3)?,
+        is_sent: sqlite_to_bool(row.get(4)?),
     })
+}
+
+fn parse_uuid(value: String) -> uuid::Uuid {
+    uuid::Uuid::parse_str(&value).unwrap_or_else(|_| uuid::Uuid::nil())
 }
 
 fn bool_to_sqlite(value: bool) -> i64 {
@@ -84,7 +150,7 @@ mod tests {
         let id = super::insert(&connection, &comment)?;
         comment.id = id;
 
-        let fetched = super::fetch_by_id(&connection, id)?.expect("comment exists");
+        let fetched = super::fetch_by_uuid(&connection, &comment.uuid)?.expect("comment exists");
         assert_eq!(fetched.comment_type, CommentType::Turn);
         assert!(!fetched.is_sent);
 

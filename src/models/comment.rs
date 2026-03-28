@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -25,8 +26,10 @@ impl CommentType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Comment {
     pub id: i64,
+    pub uuid: Uuid,
     #[serde(rename = "type")]
     pub comment_type: CommentType,
     pub content: String,
@@ -37,6 +40,7 @@ impl Comment {
     pub fn new(comment_type: CommentType, content: impl Into<String>) -> Self {
         Self {
             id: 0,
+            uuid: Uuid::new_v4(),
             comment_type,
             content: content.into(),
             is_sent: false,

@@ -5,6 +5,7 @@ mod database;
 mod input;
 mod models;
 mod platform;
+mod server;
 mod ui;
 
 fn main() -> anyhow::Result<()> {
@@ -13,6 +14,7 @@ fn main() -> anyhow::Result<()> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
+    runtime.block_on(server::spawn())?;
     let channels = channels::AppChannels::new();
 
     let native_options = ui::TurnCheckerApp::native_options();

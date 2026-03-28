@@ -1,19 +1,22 @@
 use anyhow::Result;
 use rusqlite::{params, Connection, OptionalExtension, Row};
 
+use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType};
 
 pub fn insert(connection: &Connection, check: &Check) -> Result<i64> {
+    let source = check.source.to_storage();
     let (repeat_type, repeat_value) = check.repeat_case.to_storage();
 
     connection.execute(
         "INSERT INTO checks (
-            uuid, name, detail, repeat_type, repeat_value, position, is_mandatory, is_checked, is_sent
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            uuid, name, detail, source, repeat_type, repeat_value, position, is_mandatory, is_checked, is_sent
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
         params![
             check.uuid.to_string(),
             check.name,
             check.detail,
+            source,
             repeat_type,
             repeat_value,
             check.position,
@@ -28,7 +31,7 @@ pub fn insert(connection: &Connection, check: &Check) -> Result<i64> {
 
 pub fn fetch_all(connection: &Connection) -> Result<Vec<Check>> {
     let mut statement = connection.prepare(
-        "SELECT id, uuid, name, detail, repeat_type, repeat_value, position, is_mandatory, is_checked, is_sent
+        "SELECT id, uuid, name, detail, source, repeat_type, repeat_value, position, is_mandatory, is_checked, is_sent
          FROM checks
          ORDER BY position, name",
     )?;
@@ -42,7 +45,7 @@ pub fn fetch_unsent(connection: &Connection, limit: Option<usize>) -> Result<Vec
     match limit {
         Some(limit) => {
             let mut statement = connection.prepare(
-                "SELECT id, uuid, name, detail, repeat_type, repeat_value, position, is_mandatory, is_checked, is_sent
+                "SELECT id, uuid, name, detail, source, repeat_type, repeat_value, position, is_mandatory, is_checked, is_sent
                  FROM checks
                  WHERE is_sent = 0
                  ORDER BY position, name
@@ -53,7 +56,7 @@ pub fn fetch_unsent(connection: &Connection, limit: Option<usize>) -> Result<Vec
         }
         None => {
             let mut statement = connection.prepare(
-                "SELECT id, uuid, name, detail, repeat_type, repeat_value, position, is_mandatory, is_checked, is_sent
+                "SELECT id, uuid, name, detail, source, repeat_type, repeat_value, position, is_mandatory, is_checked, is_sent
                  FROM checks
                  WHERE is_sent = 0
                  ORDER BY position, name",
@@ -66,7 +69,7 @@ pub fn fetch_unsent(connection: &Connection, limit: Option<usize>) -> Result<Vec
 
 pub fn fetch_by_uuid(connection: &Connection, uuid: &uuid::Uuid) -> Result<Option<Check>> {
     let mut statement = connection.prepare(
-        "SELECT id, uuid, name, detail, repeat_type, repeat_value, position, is_mandatory, is_checked, is_sent
+        "SELECT id, uuid, name, detail, source, repeat_type, repeat_value, position, is_mandatory, is_checked, is_sent
          FROM checks
          WHERE uuid = ?1",
     )?;
@@ -79,15 +82,17 @@ pub fn fetch_by_uuid(connection: &Connection, uuid: &uuid::Uuid) -> Result<Optio
 
 pub fn upsert(connection: &Connection, check: &Check) -> Result<i64> {
     if let Some(existing) = fetch_by_uuid(connection, &check.uuid)? {
+        let source = check.source.to_storage();
         let (repeat_type, repeat_value) = check.repeat_case.to_storage();
         connection.execute(
             "UPDATE checks
-             SET name = ?1, detail = ?2, repeat_type = ?3, repeat_value = ?4, position = ?5,
-                 is_mandatory = ?6, is_checked = ?7, is_sent = ?8
-             WHERE uuid = ?9",
+             SET name = ?1, detail = ?2, source = ?3, repeat_type = ?4, repeat_value = ?5,
+                 position = ?6, is_mandatory = ?7, is_checked = ?8, is_sent = ?9
+             WHERE uuid = ?10",
             params![
                 check.name,
                 check.detail,
+                source,
                 repeat_type,
                 repeat_value,
                 check.position,
@@ -104,16 +109,18 @@ pub fn upsert(connection: &Connection, check: &Check) -> Result<i64> {
 }
 
 pub fn update(connection: &Connection, check: &Check) -> Result<()> {
+    let source = check.source.to_storage();
     let (repeat_type, repeat_value) = check.repeat_case.to_storage();
 
     connection.execute(
         "UPDATE checks
-         SET name = ?1, detail = ?2, repeat_type = ?3, repeat_value = ?4, position = ?5,
-             is_mandatory = ?6, is_checked = ?7, is_sent = ?8
-         WHERE id = ?9",
+         SET name = ?1, detail = ?2, source = ?3, repeat_type = ?4, repeat_value = ?5,
+             position = ?6, is_mandatory = ?7, is_checked = ?8, is_sent = ?9
+         WHERE id = ?10",
         params![
             check.name,
             check.detail,
+            source,
             repeat_type,
             repeat_value,
             check.position,
@@ -145,19 +152,21 @@ pub fn delete(connection: &Connection, id: i64) -> Result<()> {
 }
 
 fn row_to_check(row: &Row<'_>) -> rusqlite::Result<Check> {
-    let repeat_type: String = row.get(4)?;
-    let repeat_value = row.get(5)?;
+    let source: String = row.get(4)?;
+    let repeat_type: String = row.get(5)?;
+    let repeat_value = row.get(6)?;
 
     Ok(Check {
         id: row.get(0)?,
         uuid: parse_uuid(row.get(1)?),
         name: row.get(2)?,
         detail: row.get(3)?,
+        source: CheckSourceType::from_storage(&source),
         repeat_case: CheckRepeatType::from_storage(&repeat_type, repeat_value),
-        position: row.get(6)?,
-        is_mandatory: sqlite_to_bool(row.get(7)?),
-        is_checked: sqlite_to_bool(row.get(8)?),
-        is_sent: sqlite_to_bool(row.get(9)?),
+        position: row.get(7)?,
+        is_mandatory: sqlite_to_bool(row.get(8)?),
+        is_checked: sqlite_to_bool(row.get(9)?),
+        is_sent: sqlite_to_bool(row.get(10)?),
     })
 }
 
@@ -166,7 +175,11 @@ fn parse_uuid(value: String) -> uuid::Uuid {
 }
 
 fn bool_to_sqlite(value: bool) -> i64 {
-    if value { 1 } else { 0 }
+    if value {
+        1
+    } else {
+        0
+    }
 }
 
 fn sqlite_to_bool(value: i64) -> bool {
@@ -178,6 +191,7 @@ mod tests {
     use anyhow::Result;
 
     use crate::database::connection::establish_in_memory_connection;
+    use crate::models::check_source_type::CheckSourceType;
     use crate::models::{Check, CheckRepeatType};
 
     #[test]
@@ -185,6 +199,7 @@ mod tests {
         let connection = establish_in_memory_connection()?;
         let mut check = Check::new("Scout");
         check.detail = Some("Reveal nearby units".to_string());
+        check.source = CheckSourceType::Blueprint;
         check.repeat_case = CheckRepeatType::Conditional(3);
         check.position = 2;
         check.is_mandatory = true;
@@ -195,9 +210,11 @@ mod tests {
         check.id = id;
 
         let fetched = super::fetch_by_uuid(&connection, &check.uuid)?.expect("check exists");
+        assert_eq!(fetched.source, CheckSourceType::Blueprint);
         assert_eq!(fetched.repeat_case, CheckRepeatType::Conditional(3));
         assert!(fetched.is_sent);
 
+        check.source = CheckSourceType::Turn;
         check.repeat_case = CheckRepeatType::Until(5);
         check.name = "Scout Again".to_string();
         super::update(&connection, &check)?;
@@ -205,10 +222,25 @@ mod tests {
         let checks = super::fetch_all(&connection)?;
         assert_eq!(checks.len(), 1);
         assert_eq!(checks[0].name, "Scout Again");
+        assert_eq!(checks[0].source, CheckSourceType::Turn);
         assert_eq!(checks[0].repeat_case, CheckRepeatType::Until(5));
 
         super::delete(&connection, id)?;
         assert!(super::fetch_all(&connection)?.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
+    fn default_source_round_trips() -> Result<()> {
+        let connection = establish_in_memory_connection()?;
+        let check = Check::new("Default source");
+
+        let id = super::insert(&connection, &check)?;
+        let fetched = super::fetch_by_uuid(&connection, &check.uuid)?.expect("check exists");
+
+        assert_eq!(fetched.id, id);
+        assert_eq!(fetched.source, CheckSourceType::Game);
 
         Ok(())
     }

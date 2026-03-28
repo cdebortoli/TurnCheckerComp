@@ -1,6 +1,7 @@
 mod content;
 mod pairing;
 mod startup;
+mod theme;
 
 use eframe::egui;
 use tokio::runtime::Runtime;
@@ -43,7 +44,8 @@ impl TurnCheckerApp {
 
 impl eframe::App for TurnCheckerApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        self.startup.ensure_started(&mut self.runtime, self.pairing.pairing_state());
+        self.startup
+            .ensure_started(&mut self.runtime, self.pairing.pairing_state());
         self.startup.sync_pairing_connection(&mut self.pairing);
 
         ui.heading("Turn Checker Companion");
@@ -59,7 +61,8 @@ impl eframe::App for TurnCheckerApp {
             ui.label("Starting the local sync server...");
         }
 
-        self.startup.show_restore_modal(ui, &mut self.runtime, self.pairing.pairing_state());
+        self.startup
+            .show_restore_modal(ui, &mut self.runtime, self.pairing.pairing_state());
         self.startup.sync_pairing_connection(&mut self.pairing);
     }
 }

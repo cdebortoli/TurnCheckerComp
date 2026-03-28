@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::models::CheckRepeatType;
+use crate::models::{check_source_type::CheckSourceType, CheckRepeatType};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -10,6 +10,7 @@ pub struct Check {
     pub uuid: Uuid,
     pub name: String,
     pub detail: Option<String>,
+    pub source: CheckSourceType,
     #[serde(rename = "repeatCase")]
     pub repeat_case: CheckRepeatType,
     pub position: i32,
@@ -25,6 +26,7 @@ impl Check {
             uuid: Uuid::new_v4(),
             name: name.into(),
             detail: None,
+            source: CheckSourceType::default(),
             repeat_case: CheckRepeatType::default(),
             position: 0,
             is_mandatory: false,

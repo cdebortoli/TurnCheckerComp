@@ -95,6 +95,7 @@ fn configure_connection(connection: &Connection) -> Result<()> {
             uuid TEXT NOT NULL UNIQUE,
             name TEXT NOT NULL,
             detail TEXT,
+            source TEXT NOT NULL,
             repeat_type TEXT NOT NULL,
             repeat_value INTEGER,
             position INTEGER NOT NULL DEFAULT 0,

@@ -5,6 +5,19 @@ use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType};
 
 pub fn insert(connection: &Connection, check: &Check) -> Result<i64> {
+    // Auto-generate position as max existing position + 1
+    let max_position: Option<i32> = connection
+        .query_row(
+            "SELECT COALESCE(MAX(position), 0) FROM checks",
+            [],
+            |row| row.get(0),
+        )
+        .optional()?;
+    let position = match max_position {
+        Some(max) => max + 1,
+        None => 1,
+    };
+
     let source = check.source.to_storage();
     let (repeat_type, repeat_value) = check.repeat_case.to_storage();
 
@@ -19,7 +32,7 @@ pub fn insert(connection: &Connection, check: &Check) -> Result<i64> {
             source,
             repeat_type,
             repeat_value,
-            check.position,
+            position,
             bool_to_sqlite(check.is_mandatory),
             bool_to_sqlite(check.is_checked),
             bool_to_sqlite(check.is_sent),

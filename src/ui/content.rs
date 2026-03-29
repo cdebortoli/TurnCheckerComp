@@ -29,7 +29,6 @@ struct NewCheckDraft {
     source: CheckSourceType,
     repeat_case: CheckRepeatType,
     repeat_value: String,
-    position: String,
     is_mandatory: bool,
     is_checked: bool,
 }
@@ -92,7 +91,6 @@ impl Default for NewCheckDraft {
             source: CheckSourceType::Game,
             repeat_case: CheckRepeatType::Everytime,
             repeat_value: String::new(),
-            position: "0".to_string(),
             is_mandatory: false,
             is_checked: false,
         }
@@ -105,12 +103,6 @@ impl NewCheckDraft {
         if name.is_empty() {
             return Err("Name is required.".to_string());
         }
-
-        let position = self
-            .position
-            .trim()
-            .parse::<i32>()
-            .map_err(|_| "Position must be a valid integer.".to_string())?;
 
         let repeat_case = match self.repeat_case {
             CheckRepeatType::Everytime => CheckRepeatType::Everytime,
@@ -129,7 +121,6 @@ impl NewCheckDraft {
         check.detail = trimmed_option(&self.detail);
         check.source = self.source.clone();
         check.repeat_case = repeat_case;
-        check.position = position;
         check.is_mandatory = self.is_mandatory;
         check.is_checked = self.is_checked;
         check.is_sent = false;
@@ -168,13 +159,11 @@ mod tests {
     fn draft_builds_everytime_check() {
         let draft = NewCheckDraft {
             name: "Scout".to_string(),
-            position: "2".to_string(),
             ..Default::default()
         };
 
         let check = draft.to_check().expect("draft should convert");
         assert_eq!(check.name, "Scout");
-        assert_eq!(check.position, 2);
         assert_eq!(check.repeat_case, CheckRepeatType::Everytime);
     }
 

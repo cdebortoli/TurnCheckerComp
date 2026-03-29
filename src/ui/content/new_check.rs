@@ -14,7 +14,6 @@ impl MainContentView {
             self.show_new_check_source_selector(ui, theme);
             self.show_new_check_repeat_selector(ui, theme);
             self.show_new_check_repeat_value(ui, theme);
-            self.show_new_check_position(ui, theme);
             self.show_new_check_toggles(ui, theme);
             self.show_new_check_actions(ui);
         });
@@ -91,9 +90,7 @@ impl MainContentView {
         }
     }
 
-    fn show_new_check_position(&mut self, ui: &mut egui::Ui, theme: &Theme) {
-        labeled_text_edit(ui, theme, "Position", &mut self.new_check_draft.position, false);
-    }
+
 
     fn show_new_check_toggles(&mut self, ui: &mut egui::Ui, theme: &Theme) {
         ui.horizontal(|ui| {

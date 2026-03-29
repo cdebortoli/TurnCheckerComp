@@ -24,22 +24,18 @@ impl MainContentView {
 
     fn show_top_bar(&mut self, ui: &mut egui::Ui, theme: &Theme) {
         ui.horizontal(|ui| {
-            ui.heading(RichText::new("Checks").color(theme.text_primary));
-            ui.add_space(theme.spacing_md);
-
-            self.show_mode_button(ui, theme, "New Check", ContentMode::NewCheck);
-            self.show_mode_button(ui, theme, "Comments", ContentMode::Comments);
-
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if self.mode != ContentMode::General
-                    && ui
-                        .button(RichText::new("Back").color(theme.text_primary))
-                        .clicked()
+            if self.mode != ContentMode::General {
+                if ui
+                    .button(RichText::new("Back").color(theme.text_primary))
+                    .clicked()
                 {
                     self.mode = ContentMode::General;
                     self.error_message = None;
                 }
-            });
+            } else {
+                self.show_mode_button(ui, theme, "New Check", ContentMode::NewCheck);
+                self.show_mode_button(ui, theme, "Comments", ContentMode::Comments);
+            }
         });
     }
 

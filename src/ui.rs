@@ -4,6 +4,7 @@ mod startup;
 mod theme;
 
 use eframe::egui;
+use egui::RichText;
 use tokio::runtime::Runtime;
 
 use crate::channels::UiChannels;
@@ -44,30 +45,40 @@ impl TurnCheckerApp {
 
 impl eframe::App for TurnCheckerApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        // Get theme once at the start
+        let theme = theme::Theme::from_visuals(ui.visuals());
+
         // Check if ready and so that the server must be running
         self.startup
             .ensure_started(&mut self.runtime, self.pairing.pairing_state());
         // If server started but server_connection data not processed, configuring pairing system/view
         self.startup.sync_pairing_connection(&mut self.pairing);
 
-        // UI
-        ui.heading("Turn Checker Companion");
-        ui.separator();
+        // UI - Wrap in theme frame with proper background
+        egui::Frame::new()
+            .fill(theme.bg_primary)
+            .inner_margin(theme.spacing_lg)
+            .show(ui, |ui| {
+                ui.heading(RichText::new("Turn Checker Companion").color(theme.text_primary));
+                ui.add_enabled_ui(true, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new("─").color(theme.text_muted).font(egui::FontId::monospace(16.0)));
+                    });
+                });
 
-        if !self.startup.is_ready() {
-            self.startup.show_status(ui); // Database restore warning
-        } else if self.pairing.is_paired() {
-            self.content.show(ui); // Show content
-        } else if self.startup.server_started() {
-            self.pairing.show_waiting(ui); // Pairing process
-        } else {
-            ui.label("Starting the local sync server..."); // Error
-        }
+                if !self.startup.is_ready() {
+                    self.startup.show_status(ui, &theme);
+                } else if self.pairing.is_paired() {
+                    self.content.show(ui);
+                } else if self.startup.server_started() {
+                    self.pairing.show_waiting(ui);
+                } else {
+                    ui.label(RichText::new("Starting the local sync server...")
+                        .color(theme.text_muted));
+                }
 
-        // Database restore process
-        self.startup
-            .show_restore_modal(ui, &mut self.runtime, self.pairing.pairing_state());
-        // Update pairing if server was started
-        self.startup.sync_pairing_connection(&mut self.pairing);
+                self.startup
+                    .show_restore_modal(ui, &mut self.runtime, self.pairing.pairing_state(), &theme);
+            });
     }
 }

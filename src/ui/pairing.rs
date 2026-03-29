@@ -1,6 +1,7 @@
-use eframe::egui;
+use eframe::egui::{self, RichText};
 use qrcode::QrCode;
 
+use super::theme::Theme;
 use crate::server;
 
 pub struct PairingView {
@@ -32,26 +33,36 @@ impl PairingView {
     }
 
     pub fn show_waiting(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Scan To Connect");
-        ui.label("Open the iOS app and scan the QR code to configure the server address.");
-        ui.add_space(12.0);
+        let theme = Theme::from_visuals(ui.visuals());
 
-        if let Err(error) = self.ensure_qr_texture(ui) {
-            ui.label("Failed to generate pairing QR code.");
-            ui.monospace(error.to_string());
-            return;
-        }
+        egui::Frame::new()
+            .fill(theme.bg_turn_card)
+            .inner_margin(theme.spacing_md)
+            .corner_radius(theme.corner_radius)
+            .show(ui, |ui| {
+                ui.heading(RichText::new("Scan To Connect").color(theme.text_primary));
+                ui.label(RichText::new("Open the iOS app and scan the QR code to configure the server address.")
+                    .color(theme.text_secondary));
+                ui.add_space(theme.spacing_md);
 
-        if let Some(texture) = &self.qr_texture {
-            let image = egui::Image::new(texture).fit_to_exact_size(egui::vec2(280.0, 280.0));
-            ui.add(image);
-        }
+                if let Err(error) = self.ensure_qr_texture(ui) {
+                    ui.label(RichText::new("Failed to generate pairing QR code.")
+                        .color(theme.destructive));
+                    ui.monospace(RichText::new(error.to_string()).color(theme.text_muted));
+                    return;
+                }
 
-        if let Some(server_connection) = &self.server_connection {
-            ui.add_space(12.0);
-            ui.label("Server URL");
-            ui.monospace(&server_connection.base_url);
-        }
+                if let Some(texture) = &self.qr_texture {
+                    let image = egui::Image::new(texture).fit_to_exact_size(egui::vec2(280.0, 280.0));
+                    ui.add(image);
+                }
+
+                if let Some(server_connection) = &self.server_connection {
+                    ui.add_space(theme.spacing_md);
+                    ui.label(RichText::new("Server URL").color(theme.text_secondary));
+                    ui.monospace(RichText::new(&server_connection.base_url).color(theme.text_primary));
+                }
+            });
     }
 
     fn ensure_qr_texture(&mut self, ui: &egui::Ui) -> anyhow::Result<()> {

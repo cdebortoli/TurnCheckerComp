@@ -4,6 +4,8 @@ use tokio::runtime::Runtime;
 use crate::{database, server};
 
 use super::pairing::PairingView;
+use super::theme::Theme;
+use egui::RichText;
 
 pub struct StartupController {
     state: StartupState,
@@ -54,22 +56,24 @@ impl StartupController {
         }
     }
 
-    pub fn show_status(&self, ui: &mut egui::Ui) {
+    pub fn show_status(&self, ui: &mut egui::Ui, theme: &Theme) {
         match &self.state {
             StartupState::NeedsDecision { unsent_records } => {
-                ui.label(format!(
+                ui.label(RichText::new(format!(
                     "The existing database contains {unsent_records} unsent record(s)."
-                ));
-                ui.label("Choose whether to keep it or recreate it.");
+                )).color(theme.text_secondary));
+                ui.label(RichText::new("Choose whether to keep it or recreate it.")
+                    .color(theme.text_muted));
             }
             StartupState::Ready => {
                 if !self.server_started {
-                    ui.label("Starting the local sync server...");
+                    ui.label(RichText::new("Starting the local sync server...")
+                        .color(theme.text_muted));
                 }
             }
             StartupState::Failed(message) => {
-                ui.label("Startup failed.");
-                ui.monospace(message);
+                ui.label(RichText::new("Startup failed.").color(theme.text_primary));
+                ui.monospace(RichText::new(message).color(theme.destructive));
             }
         }
     }
@@ -79,6 +83,7 @@ impl StartupController {
         ui: &mut egui::Ui,
         runtime: &mut Runtime,
         pairing_state: server::PairingState,
+        theme: &Theme,
     ) {
         let unsent_records = match &self.state {
             StartupState::NeedsDecision { unsent_records } => Some(*unsent_records),
@@ -92,11 +97,12 @@ impl StartupController {
                 .collapsible(false)
                 .resizable(false)
                 .show(&ctx, |ui| {
-                    ui.label(format!(
+                    ui.label(RichText::new(format!(
                         "The current database contains {unsent_records} unsent record(s)."
-                    ));
-                    ui.label("Do you want to keep the current database?");
-                    ui.add_space(8.0);
+                    )).color(theme.text_primary));
+                    ui.label(RichText::new("Do you want to keep the current database?")
+                        .color(theme.text_muted));
+                    ui.add_space(theme.spacing_md);
 
                     if ui.button("Keep current database").clicked() {
                         self.continue_startup(runtime, pairing_state.clone());

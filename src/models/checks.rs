@@ -13,6 +13,7 @@ pub struct Check {
     pub source: CheckSourceType,
     #[serde(rename = "repeatCase")]
     pub repeat_case: CheckRepeatType,
+    pub tag_uuid: Option<Uuid>,
     pub position: i32,
     pub is_mandatory: bool,
     pub is_checked: bool,
@@ -28,6 +29,7 @@ impl Check {
             detail: None,
             source: CheckSourceType::default(),
             repeat_case: CheckRepeatType::default(),
+            tag_uuid: None,
             position: 0,
             is_mandatory: false,
             is_checked: false,

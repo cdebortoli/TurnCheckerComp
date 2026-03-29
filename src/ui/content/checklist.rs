@@ -1,6 +1,6 @@
 use eframe::egui::{self, RichText};
 
-use super::MainContentView;
+use super::{find_tag_by_uuid, show_tag_capsule, MainContentView};
 use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType};
 use crate::ui::theme::Theme;
@@ -85,6 +85,19 @@ impl MainContentView {
                 );
                 show_repeat_badge(ui, theme, &check.repeat_case);
             });
+
+            if check.detail.is_some() || check.tag_uuid.is_some() {
+                ui.add_space(theme.spacing_sm);
+                ui.horizontal_wrapped(|ui| {
+                    if let Some(detail) = &check.detail {
+                        ui.label(RichText::new(detail).color(theme.text_secondary).small());
+                    }
+
+                    if let Some(tag) = find_tag_by_uuid(&self.tags, check.tag_uuid) {
+                        show_tag_capsule(ui, tag);
+                    }
+                });
+            }
         });
     }
 
@@ -123,15 +136,6 @@ impl MainContentView {
                 ui.painter()
                     .circle_filled(eframe::egui::pos2(6.0, 6.0), 6.0, color);
             });
-    }
-}
-
-fn source_label(source: &CheckSourceType) -> &'static str {
-    match source {
-        CheckSourceType::Game => "Game",
-        CheckSourceType::GlobalGame => "Global Game",
-        CheckSourceType::Blueprint => "Blueprint",
-        CheckSourceType::Turn => "Turn",
     }
 }
 

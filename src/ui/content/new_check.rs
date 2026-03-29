@@ -1,8 +1,9 @@
 use eframe::egui::{self, RichText};
 
-use super::{ContentMode, MainContentView};
+use super::{find_tag_by_uuid, tag_fill_color, ContentMode, MainContentView};
 use crate::models::check_source_type::CheckSourceType;
 use crate::models::CheckRepeatType;
+use crate::models::Tag;
 use crate::ui::theme::Theme;
 
 impl MainContentView {
@@ -11,6 +12,7 @@ impl MainContentView {
 
         egui::ScrollArea::vertical().show(ui, |ui| {
             self.show_new_check_text_fields(ui, theme);
+            self.show_new_check_tag_selector(ui, theme);
             self.show_new_check_source_selector(ui, theme);
             self.show_new_check_repeat_selector(ui, theme);
             self.show_new_check_repeat_value(ui, theme);
@@ -46,6 +48,29 @@ impl MainContentView {
                         source.clone(),
                         source_label(&source),
                     );
+                }
+            });
+        ui.add_space(theme.spacing_md);
+    }
+
+    fn show_new_check_tag_selector(&mut self, ui: &mut egui::Ui, theme: &Theme) {
+        ui.label(RichText::new("Tag").color(theme.text_secondary));
+
+        let selected_label = find_tag_by_uuid(&self.tags, self.new_check_draft.selected_tag_uuid)
+            .map(|tag| tag.name.as_str())
+            .unwrap_or("No tag");
+
+        egui::ComboBox::from_id_salt("new_check_tag")
+            .selected_text(selected_label)
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut self.new_check_draft.selected_tag_uuid, None, "No tag");
+
+                for tag in &self.tags {
+                    let is_selected = self.new_check_draft.selected_tag_uuid == Some(tag.uuid);
+                    if show_tag_option(ui, tag, is_selected).clicked() {
+                        self.new_check_draft.selected_tag_uuid = Some(tag.uuid);
+                        ui.close();
+                    }
                 }
             });
         ui.add_space(theme.spacing_md);
@@ -89,8 +114,6 @@ impl MainContentView {
             ui.add_space(theme.spacing_md);
         }
     }
-
-
 
     fn show_new_check_toggles(&mut self, ui: &mut egui::Ui, theme: &Theme) {
         ui.horizontal(|ui| {
@@ -186,11 +209,32 @@ fn repeat_requires_value(repeat_case: &CheckRepeatType) -> bool {
     !matches!(repeat_case, CheckRepeatType::Everytime)
 }
 
+fn show_tag_option(ui: &mut egui::Ui, tag: &Tag, is_selected: bool) -> egui::Response {
+    let response = ui.add(
+        egui::Button::new(
+            egui::RichText::new(format!("   {}", tag.name)).color(ui.visuals().text_color()), // Should manage the margin with a real padding system
+        )
+        .min_size(egui::vec2(ui.available_width(), 0.0))
+        .selected(is_selected),
+    );
+
+    ui.painter().circle_filled(
+        egui::pos2(response.rect.left() + 6.0, response.rect.center().y),
+        4.0,
+        tag_fill_color(tag),
+    );
+
+    response
+}
+
 fn same_repeat_variant(left: &CheckRepeatType, right: &CheckRepeatType) -> bool {
     matches!(
         (left, right),
         (CheckRepeatType::Everytime, CheckRepeatType::Everytime)
-            | (CheckRepeatType::Conditional(_), CheckRepeatType::Conditional(_))
+            | (
+                CheckRepeatType::Conditional(_),
+                CheckRepeatType::Conditional(_)
+            )
             | (CheckRepeatType::Specific(_), CheckRepeatType::Specific(_))
             | (CheckRepeatType::Until(_), CheckRepeatType::Until(_))
     )

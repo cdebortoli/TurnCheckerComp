@@ -5,11 +5,14 @@ mod new_check;
 
 use crate::database;
 use crate::models::check_source_type::CheckSourceType;
-use crate::models::{Check, CheckRepeatType};
+use crate::models::{Check, CheckRepeatType, Tag};
+use eframe::egui;
+use uuid::Uuid;
 
 pub struct MainContentView {
     mode: ContentMode,
     checks: Vec<Check>,
+    tags: Vec<Tag>,
     new_check_draft: NewCheckDraft,
     error_message: Option<String>,
     needs_reload: bool,
@@ -26,6 +29,7 @@ enum ContentMode {
 struct NewCheckDraft {
     name: String,
     detail: String,
+    selected_tag_uuid: Option<Uuid>,
     source: CheckSourceType,
     repeat_case: CheckRepeatType,
     repeat_value: String,
@@ -38,6 +42,7 @@ impl MainContentView {
         Self {
             mode: ContentMode::General,
             checks: Vec::new(),
+            tags: Vec::new(),
             new_check_draft: NewCheckDraft::default(),
             error_message: None,
             needs_reload: true,
@@ -49,9 +54,10 @@ impl MainContentView {
             return;
         }
 
-        match Self::load_checks() {
-            Ok(checks) => {
+        match Self::load_content() {
+            Ok((checks, tags)) => {
                 self.checks = checks;
+                self.tags = tags;
                 self.error_message = None;
             }
             Err(error) => self.error_message = Some(error),
@@ -59,9 +65,11 @@ impl MainContentView {
         self.needs_reload = false;
     }
 
-    fn load_checks() -> Result<Vec<Check>, String> {
+    fn load_content() -> Result<(Vec<Check>, Vec<Tag>), String> {
         let connection = database::establish_connection().map_err(|err| err.to_string())?;
-        database::checks::fetch_all(&connection).map_err(|err| err.to_string())
+        let checks = database::checks::fetch_all(&connection).map_err(|err| err.to_string())?;
+        let tags = database::tags::fetch_all(&connection).map_err(|err| err.to_string())?;
+        Ok((checks, tags))
     }
 
     fn update_check_status(&mut self, mut check: Check, is_checked: bool) -> Result<(), String> {
@@ -88,6 +96,7 @@ impl Default for NewCheckDraft {
         Self {
             name: String::new(),
             detail: String::new(),
+            selected_tag_uuid: None,
             source: CheckSourceType::Game,
             repeat_case: CheckRepeatType::Everytime,
             repeat_value: String::new(),
@@ -119,6 +128,7 @@ impl NewCheckDraft {
 
         let mut check = Check::new(name);
         check.detail = trimmed_option(&self.detail);
+        check.tag_uuid = self.selected_tag_uuid;
         check.source = self.source.clone();
         check.repeat_case = repeat_case;
         check.is_mandatory = self.is_mandatory;
@@ -150,10 +160,46 @@ fn trimmed_option(value: &str) -> Option<String> {
     }
 }
 
+fn find_tag_by_uuid<'a>(tags: &'a [Tag], tag_uuid: Option<Uuid>) -> Option<&'a Tag> {
+    let tag_uuid = tag_uuid?;
+    tags.iter().find(|tag| tag.uuid == tag_uuid)
+}
+
+fn parse_hex_color(value: &str) -> Option<egui::Color32> {
+    let hex = value.trim().trim_start_matches('#');
+    if hex.len() != 6 {
+        return None;
+    }
+
+    let red = u8::from_str_radix(&hex[0..2], 16).ok()?;
+    let green = u8::from_str_radix(&hex[2..4], 16).ok()?;
+    let blue = u8::from_str_radix(&hex[4..6], 16).ok()?;
+    Some(egui::Color32::from_rgb(red, green, blue))
+}
+
+fn tag_fill_color(tag: &Tag) -> egui::Color32 {
+    parse_hex_color(&tag.color).unwrap_or_else(|| egui::Color32::from_rgb(99, 99, 102))
+}
+
+fn tag_text_color(tag: &Tag) -> egui::Color32 {
+    parse_hex_color(&tag.text_color).unwrap_or(egui::Color32::WHITE)
+}
+
+fn show_tag_capsule(ui: &mut egui::Ui, tag: &Tag) {
+    egui::Frame::new()
+        .fill(tag_fill_color(tag))
+        .corner_radius(999.0)
+        .inner_margin(egui::Margin::symmetric(10, 4))
+        .show(ui, |ui| {
+            ui.label(egui::RichText::new(&tag.name).color(tag_text_color(tag)).small());
+        });
+}
+
 #[cfg(test)]
 mod tests {
     use super::NewCheckDraft;
     use crate::models::CheckRepeatType;
+    use uuid::Uuid;
 
     #[test]
     fn draft_builds_everytime_check() {
@@ -165,6 +211,7 @@ mod tests {
         let check = draft.to_check().expect("draft should convert");
         assert_eq!(check.name, "Scout");
         assert_eq!(check.repeat_case, CheckRepeatType::Everytime);
+        assert_eq!(check.tag_uuid, None);
     }
 
     #[test]
@@ -182,8 +229,10 @@ mod tests {
 
     #[test]
     fn draft_builds_non_default_repeat_type() {
+        let tag_uuid = Uuid::new_v4();
         let draft = NewCheckDraft {
             name: "Scout".to_string(),
+            selected_tag_uuid: Some(tag_uuid),
             repeat_case: CheckRepeatType::Specific(1),
             repeat_value: "4".to_string(),
             ..Default::default()
@@ -191,5 +240,6 @@ mod tests {
 
         let check = draft.to_check().expect("draft should convert");
         assert_eq!(check.repeat_case, CheckRepeatType::Specific(4));
+        assert_eq!(check.tag_uuid, Some(tag_uuid));
     }
 }

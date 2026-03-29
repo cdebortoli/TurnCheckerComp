@@ -5,9 +5,11 @@ use anyhow::Result;
 use rusqlite::Connection;
 
 use crate::database::checks;
-use crate::models::Check;
+use crate::database::tags;
+use crate::models::{Check, Tag};
 
 const INSERT_DEBUG_UNSENT_CHECK_ON_CREATE: bool = false;
+const INSERT_DEBUG_TAGS_ON_START: bool = false;
 
 pub fn database_path() -> PathBuf {
     std::env::current_dir()
@@ -33,6 +35,7 @@ pub fn establish_connection_at(path: PathBuf) -> Result<Connection> {
     let is_new_database = !path.exists();
     let connection = Connection::open(path)?;
     configure_connection(&connection)?;
+    maybe_insert_debug_tags(&connection)?;
     maybe_insert_debug_unsent_check(&connection, is_new_database)?;
     Ok(connection)
 }
@@ -98,6 +101,7 @@ fn configure_connection(connection: &Connection) -> Result<()> {
             source TEXT NOT NULL,
             repeat_type TEXT NOT NULL,
             repeat_value INTEGER,
+            tag_uuid TEXT,
             position INTEGER NOT NULL DEFAULT 0,
             is_mandatory INTEGER NOT NULL DEFAULT 0,
             is_checked INTEGER NOT NULL DEFAULT 0,
@@ -119,12 +123,57 @@ fn configure_connection(connection: &Connection) -> Result<()> {
         ",
     )?;
 
+    //ensure_column_exists(connection, "checks", "tag_uuid", "TEXT")?;
+
     Ok(())
 }
+
+// fn ensure_column_exists(
+//     connection: &Connection,
+//     table_name: &str,
+//     column_name: &str,
+//     column_definition: &str,
+// ) -> Result<()> {
+//     let pragma = format!("PRAGMA table_info({table_name})");
+//     let mut statement = connection.prepare(&pragma)?;
+//     let columns = statement
+//         .query_map([], |row| row.get::<_, String>(1))?
+//         .collect::<rusqlite::Result<Vec<_>>>()?;
+//     drop(statement);
+
+//     if columns.iter().any(|column| column == column_name) {
+//         return Ok(());
+//     }
+
+//     let alter = format!("ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}");
+//     connection.execute(&alter, [])?;
+//     Ok(())
+// }
 
 fn maybe_insert_debug_unsent_check(connection: &Connection, is_new_database: bool) -> Result<()> {
     if INSERT_DEBUG_UNSENT_CHECK_ON_CREATE && is_new_database {
         insert_debug_unsent_check(connection)?;
+    }
+
+    Ok(())
+}
+
+fn maybe_insert_debug_tags(connection: &Connection) -> Result<()> {
+    if INSERT_DEBUG_TAGS_ON_START {
+        insert_debug_tags(connection)?;
+    }
+
+    Ok(())
+}
+
+fn insert_debug_tags(connection: &Connection) -> Result<()> {
+    for (name, color, text_color) in [
+        ("war", "#C0392B", "#FFFFFF"),
+        ("economy", "#27AE60", "#FFFFFF"),
+        ("diplomacy", "#2980B9", "#FFFFFF"),
+    ] {
+        let tag = Tag::new(name, color, text_color);
+        tags::insert(connection, &tag)?;
     }
 
     Ok(())

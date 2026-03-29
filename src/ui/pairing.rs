@@ -35,11 +35,12 @@ impl PairingView {
     pub fn show_waiting(&mut self, ui: &mut egui::Ui) {
         let theme = Theme::from_visuals(ui.visuals());
 
-        egui::Frame::new()
-            .fill(theme.bg_turn_card)
-            .inner_margin(theme.spacing_md)
-            .corner_radius(theme.corner_radius)
-            .show(ui, |ui| {
+        egui::CentralPanel::default()
+            .frame(egui::Frame::new()
+                .fill(theme.bg_turn_card)
+                .inner_margin(theme.spacing_md)
+                .corner_radius(theme.corner_radius))
+            .show_inside(ui, |ui| {
                 ui.heading(RichText::new("Scan To Connect").color(theme.text_primary));
                 ui.label(RichText::new("Open the iOS app and scan the QR code to configure the server address.")
                     .color(theme.text_secondary));

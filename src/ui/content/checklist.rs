@@ -42,7 +42,6 @@ impl MainContentView {
             .inner_margin(theme.card_padding)
             .show(ui, |ui| {
                 self.show_check_card_header(ui, theme, &check, &mut selected_checked);
-                self.show_check_card_details(ui, theme, &check);
             });
 
         if selected_checked != check.is_checked {
@@ -53,7 +52,7 @@ impl MainContentView {
     }
 
     fn show_check_card_header(
-        &self,
+        &mut self,
         ui: &mut egui::Ui,
         theme: &Theme,
         check: &Check,
@@ -62,7 +61,11 @@ impl MainContentView {
         ui.horizontal(|ui| {
             self.show_check_source_indicator(ui, theme, check);
             self.show_check_card_title(ui, theme, check);
-            self.show_check_status_selector(ui, check, selected_checked);
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                self.show_sent_status_icon(ui, theme, check);
+                self.show_check_toggle(ui, check, selected_checked);
+                self.show_mandatory_indicator(ui, theme, check);
+            });
         });
     }
 
@@ -80,91 +83,47 @@ impl MainContentView {
                         .color(theme.text_primary)
                         .strong(),
                 );
-                if check.is_mandatory {
-                    ui.label(RichText::new("Mandatory").color(theme.warning).small());
-                }
                 show_repeat_badge(ui, theme, &check.repeat_case);
             });
-
-            if let Some(detail) = &check.detail {
-                if !detail.is_empty() {
-                    ui.label(RichText::new(detail).color(theme.text_secondary));
-                }
-            }
         });
     }
 
-    fn show_check_status_selector(
-        &self,
-        ui: &mut egui::Ui,
-        check: &Check,
-        selected_checked: &mut bool,
-    ) {
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-            egui::ComboBox::from_id_salt(("check_status", check.id))
-                .selected_text(if *selected_checked {
-                    "Checked"
-                } else {
-                    "Unchecked"
-                })
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(selected_checked, false, "Unchecked");
-                    ui.selectable_value(selected_checked, true, "Checked");
-                });
-        });
-    }
-
-    fn show_check_card_details(&self, ui: &mut egui::Ui, theme: &Theme, check: &Check) {
-        ui.add_space(theme.spacing_sm);
-        ui.separator();
-        ui.add_space(theme.spacing_sm);
-
-        let details = CheckCardDetails::from(check);
-        egui::Grid::new(("check_grid", check.id))
-            .num_columns(2)
-            .spacing([theme.spacing_lg, theme.spacing_sm])
-            .show(ui, |ui| {
-                field_row(ui, theme, "Source", source_label(&check.source));
-                field_row(ui, theme, "Repeat", &details.repeat_text);
-                field_row(ui, theme, "Position", &details.position_text);
-                field_row(ui, theme, "Selected", details.selected_text);
-                field_row(ui, theme, "Mandatory", details.mandatory_text);
-                field_row(ui, theme, "Sent", details.sent_text);
-                field_row(ui, theme, "UUID", &details.uuid_text);
-            });
-    }
-}
-
-struct CheckCardDetails {
-    repeat_text: String,
-    position_text: String,
-    selected_text: &'static str,
-    mandatory_text: &'static str,
-    sent_text: &'static str,
-    uuid_text: String,
-}
-
-impl From<&Check> for CheckCardDetails {
-    fn from(check: &Check) -> Self {
-        Self {
-            repeat_text: repeat_label(&check.repeat_case),
-            position_text: check.position.to_string(),
-            selected_text: if check.is_checked {
-                "Checked"
-            } else {
-                "Unchecked"
-            },
-            mandatory_text: if check.is_mandatory { "Yes" } else { "No" },
-            sent_text: if check.is_sent { "Yes" } else { "No" },
-            uuid_text: check.uuid.to_string(),
+    fn show_mandatory_indicator(&self, ui: &mut egui::Ui, theme: &Theme, check: &Check) {
+        if check.is_mandatory {
+            ui.label(RichText::new("Mandatory").color(theme.warning).small());
         }
     }
-}
 
-fn field_row(ui: &mut egui::Ui, theme: &Theme, label: &str, value: &str) {
-    ui.label(RichText::new(label).color(theme.text_muted));
-    ui.label(RichText::new(value).color(theme.text_secondary));
-    ui.end_row();
+    fn show_check_toggle(&mut self, ui: &mut egui::Ui, check: &Check, selected_checked: &mut bool) {
+        if ui.checkbox(selected_checked, "").changed() {
+            let is_checked = *selected_checked;
+            if let Err(error) = self.update_check_status(check.clone(), is_checked) {
+                self.error_message = Some(error);
+            }
+        }
+    }
+
+    fn show_sent_status_icon(&self, ui: &mut egui::Ui, theme: &Theme, check: &Check) {
+        let color = if check.is_sent {
+            theme.success
+        } else {
+            theme.destructive
+        };
+        let circle_color = if check.is_sent {
+            eframe::egui::Color32::from_rgba_premultiplied(48, 209, 88, 200)
+        } else {
+            eframe::egui::Color32::from_rgba_premultiplied(255, 69, 58, 200)
+        };
+
+        egui::Frame::new()
+            .fill(circle_color)
+            .corner_radius(theme.corner_radius)
+            .inner_margin(egui::Margin::symmetric(4, 2))
+            .show(ui, |ui| {
+                ui.painter()
+                    .circle_filled(eframe::egui::pos2(6.0, 6.0), 6.0, color);
+            });
+    }
 }
 
 fn source_label(source: &CheckSourceType) -> &'static str {

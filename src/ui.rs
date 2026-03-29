@@ -54,11 +54,12 @@ impl eframe::App for TurnCheckerApp {
         // If server started but server_connection data not processed, configuring pairing system/view
         self.startup.sync_pairing_connection(&mut self.pairing);
 
-        // UI - Wrap in theme frame with proper background
-        egui::Frame::new()
-            .fill(theme.bg_primary)
-            .inner_margin(theme.spacing_lg)
-            .show(ui, |ui| {
+        // UI - Full screen panel with theme background
+        egui::CentralPanel::default()
+            .frame(egui::Frame::new()
+                .fill(theme.bg_primary)
+                .inner_margin(theme.spacing_lg))
+            .show_inside(ui, |ui| {
                 ui.heading(RichText::new("Turn Checker Companion").color(theme.text_primary));
                 ui.add_enabled_ui(true, |ui| {
                     ui.horizontal(|ui| {

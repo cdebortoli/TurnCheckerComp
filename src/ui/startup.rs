@@ -57,25 +57,30 @@ impl StartupController {
     }
 
     pub fn show_status(&self, ui: &mut egui::Ui, theme: &Theme) {
-        match &self.state {
-            StartupState::NeedsDecision { unsent_records } => {
-                ui.label(RichText::new(format!(
-                    "The existing database contains {unsent_records} unsent record(s)."
-                )).color(theme.text_secondary));
-                ui.label(RichText::new("Choose whether to keep it or recreate it.")
-                    .color(theme.text_muted));
-            }
-            StartupState::Ready => {
-                if !self.server_started {
-                    ui.label(RichText::new("Starting the local sync server...")
-                        .color(theme.text_muted));
+        egui::CentralPanel::default()
+            .frame(
+                egui::Frame::new()
+                    .fill(theme.bg_turn_card)
+                    .inner_margin(theme.spacing_md)
+                    .corner_radius(theme.corner_radius),
+            )
+            .show_inside(ui, |ui| match &self.state {
+                StartupState::NeedsDecision { .. } => {
+                    ui.label(RichText::new("Waiting...").color(theme.text_muted));
                 }
-            }
-            StartupState::Failed(message) => {
-                ui.label(RichText::new("Startup failed.").color(theme.text_primary));
-                ui.monospace(RichText::new(message).color(theme.destructive));
-            }
-        }
+                StartupState::Ready => {
+                    if !self.server_started {
+                        ui.label(
+                            RichText::new("Starting the local sync server...")
+                                .color(theme.text_muted),
+                        );
+                    }
+                }
+                StartupState::Failed(message) => {
+                    ui.label(RichText::new("Startup failed.").color(theme.text_primary));
+                    ui.monospace(RichText::new(message).color(theme.destructive));
+                }
+            });
     }
 
     pub fn show_restore_modal(
@@ -97,20 +102,27 @@ impl StartupController {
                 .collapsible(false)
                 .resizable(false)
                 .show(&ctx, |ui| {
-                    ui.label(RichText::new(format!(
-                        "The current database contains {unsent_records} unsent record(s)."
-                    )).color(theme.text_primary));
-                    ui.label(RichText::new("Do you want to keep the current database?")
-                        .color(theme.text_muted));
+                    ui.label(
+                        RichText::new(format!(
+                            "The current database contains {unsent_records} unsent record(s)."
+                        ))
+                        .color(theme.text_primary),
+                    );
+                    ui.label(
+                        RichText::new("Do you want to keep the current database?")
+                            .color(theme.text_muted),
+                    );
                     ui.add_space(theme.spacing_md);
 
-                    if ui.button("Keep current database").clicked() {
-                        self.continue_startup(runtime, pairing_state.clone());
-                    }
+                    ui.horizontal(|ui| {
+                        if ui.button("Keep current database").clicked() {
+                            self.continue_startup(runtime, pairing_state.clone());
+                        }
 
-                    if ui.button("Delete and recreate database").clicked() {
-                        self.reset_database_and_continue(runtime, pairing_state.clone());
-                    }
+                        if ui.button("Delete and recreate database").clicked() {
+                            self.reset_database_and_continue(runtime, pairing_state.clone());
+                        }
+                    });
                 });
         }
     }

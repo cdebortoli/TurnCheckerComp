@@ -22,6 +22,39 @@ pub struct TurnCheckerApp {
 }
 
 impl TurnCheckerApp {
+    pub fn configure_fonts(ctx: &egui::Context) {
+        let mut fonts = egui::FontDefinitions::default();
+        let regular = egui::FontData::from_static(include_bytes!("../assets/fonts/Montserrat-Variable.ttf"))
+            .tweak(egui::FontTweak {
+                coords: egui::epaint::text::VariationCoords::new([("wght", 400.0)]),
+                ..Default::default()
+            });
+        let bold = egui::FontData::from_static(include_bytes!("../assets/fonts/Montserrat-Variable.ttf"))
+            .tweak(egui::FontTweak {
+                coords: egui::epaint::text::VariationCoords::new([("wght", 700.0)]),
+                ..Default::default()
+            });
+
+        fonts.font_data.insert(
+            "montserrat_regular".to_owned(),
+            regular.into(),
+        );
+        fonts.font_data.insert(
+            "montserrat_bold".to_owned(),
+            bold.into(),
+        );
+
+        if let Some(family) = fonts.families.get_mut(&egui::FontFamily::Proportional) {
+            family.insert(0, "montserrat_regular".to_owned());
+        }
+        fonts.families.insert(
+            egui::FontFamily::Name("montserrat-bold".into()),
+            vec!["montserrat_bold".to_owned()],
+        );
+
+        ctx.set_fonts(fonts);
+    }
+
     pub fn new(runtime: Runtime, channels: UiChannels) -> Self {
         Self {
             runtime,

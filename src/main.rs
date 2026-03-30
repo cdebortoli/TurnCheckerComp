@@ -18,7 +18,8 @@ fn main() -> anyhow::Result<()> {
     eframe::run_native(
         "Turn Checker Companion",
         native_options,
-        Box::new(move |_cc| {
+        Box::new(move |cc| {
+            ui::TurnCheckerApp::configure_fonts(&cc.egui_ctx);
             Ok(Box::new(ui::TurnCheckerApp::new(
                 runtime,
                 channels.ui.clone(),

@@ -111,7 +111,7 @@ impl MainContentView {
             ui.label(
                 RichText::new(&check.name)
                     .color(theme.text_primary)
-                    .strong(),
+                    .family(egui::FontFamily::Name("montserrat-bold".into())),
             );
 
             // Third line
@@ -138,25 +138,51 @@ impl MainContentView {
     }
 
     fn show_sent_status_icon(&self, ui: &mut egui::Ui, theme: &Theme, check: &Check) {
-        let color = if check.is_sent {
-            theme.success
-        } else {
-            theme.destructive
-        };
         let circle_color = if check.is_sent {
-            eframe::egui::Color32::from_rgba_premultiplied(48, 209, 88, 200)
+            eframe::egui::Color32::from_rgba_premultiplied(48, 209, 88, 220)
         } else {
-            eframe::egui::Color32::from_rgba_premultiplied(255, 69, 58, 200)
+            eframe::egui::Color32::from_rgba_premultiplied(255, 69, 58, 220)
         };
+        let icon_color = theme.text_primary;
+        let size = 20.0;
+        let stroke = egui::Stroke::new(2.0, icon_color);
+        let (rect, _) = ui.allocate_exact_size(egui::vec2(size, size), egui::Sense::hover());
+        let center = rect.center();
+        let radius = size * 0.5;
 
-        egui::Frame::new()
-            .fill(circle_color)
-            .corner_radius(theme.corner_radius)
-            .inner_margin(egui::Margin::symmetric(4, 2))
-            .show(ui, |ui| {
-                ui.painter()
-                    .circle_filled(eframe::egui::pos2(6.0, 6.0), 6.0, color);
-            });
+        ui.painter().circle_filled(center, radius, circle_color);
+
+        if check.is_sent {
+            ui.painter().line_segment(
+                [
+                    egui::pos2(rect.left() + 4.5, rect.center().y + 0.5),
+                    egui::pos2(rect.left() + 8.5, rect.bottom() - 5.0),
+                ],
+                stroke,
+            );
+            ui.painter().line_segment(
+                [
+                    egui::pos2(rect.left() + 8.5, rect.bottom() - 5.0),
+                    egui::pos2(rect.right() - 4.0, rect.top() + 5.0),
+                ],
+                stroke,
+            );
+        } else {
+            ui.painter().line_segment(
+                [
+                    egui::pos2(rect.left() + 5.0, rect.top() + 5.0),
+                    egui::pos2(rect.right() - 5.0, rect.bottom() - 5.0),
+                ],
+                stroke,
+            );
+            ui.painter().line_segment(
+                [
+                    egui::pos2(rect.left() + 5.0, rect.bottom() - 5.0),
+                    egui::pos2(rect.right() - 5.0, rect.top() + 5.0),
+                ],
+                stroke,
+            );
+        }
     }
 }
 
@@ -196,6 +222,7 @@ fn show_repeat_badge(ui: &mut egui::Ui, theme: &Theme, repeat_case: &CheckRepeat
             ui.label(
                 RichText::new(repeat_label(repeat_case))
                     .color(Color32::WHITE)
+                    .family(egui::FontFamily::Name("montserrat-bold".into()))
                     .small(),
             );
         });

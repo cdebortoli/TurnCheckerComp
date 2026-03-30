@@ -1,4 +1,5 @@
 use eframe::egui::{self, RichText};
+use egui::Color32;
 
 use super::{find_tag_by_uuid, show_tag_capsule, MainContentView};
 use crate::models::check_source_type::CheckSourceType;
@@ -58,45 +59,65 @@ impl MainContentView {
         check: &Check,
         selected_checked: &mut bool,
     ) {
-        ui.horizontal(|ui| {
-            self.show_check_source_indicator(ui, theme, check);
+        let row = ui.horizontal(|ui| {
+            let (indicator_rect, _) =
+                ui.allocate_exact_size(egui::vec2(4.0, 1.0), egui::Sense::hover());
             self.show_check_card_title(ui, theme, check);
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 self.show_sent_status_icon(ui, theme, check);
                 self.show_check_toggle(ui, check, selected_checked);
                 self.show_mandatory_indicator(ui, theme, check);
             });
+            indicator_rect
         });
+
+        self.show_check_source_indicator(ui, theme, check, row.inner, row.response.rect);
     }
 
-    fn show_check_source_indicator(&self, ui: &mut egui::Ui, theme: &Theme, check: &Check) {
-        let (rect, _) = ui.allocate_exact_size(egui::vec2(4.0, 36.0), egui::Sense::hover());
+    fn show_check_source_indicator(
+        &self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        check: &Check,
+        indicator_rect: egui::Rect,
+        row_rect: egui::Rect,
+    ) {
+        let inset = theme.spacing_sm;
+        let top = (row_rect.top() + inset).min(row_rect.bottom());
+        let bottom = (row_rect.bottom() - inset).max(top);
+        let rect = egui::Rect::from_min_max(
+            egui::pos2(indicator_rect.left(), top),
+            egui::pos2(indicator_rect.right(), bottom),
+        );
+
         ui.painter()
             .rect_filled(rect, theme.corner_radius, source_color(check, theme));
     }
 
     fn show_check_card_title(&self, ui: &mut egui::Ui, theme: &Theme, check: &Check) {
         ui.vertical(|ui| {
-            ui.horizontal(|ui| {
-                ui.label(
-                    RichText::new(&check.name)
-                        .color(theme.text_primary)
-                        .strong(),
-                );
+            // First line
+            ui.horizontal_wrapped(|ui| {
                 show_repeat_badge(ui, theme, &check.repeat_case);
+
+                if let Some(tag) = find_tag_by_uuid(&self.tags, check.tag_uuid) {
+                    show_tag_capsule(ui, tag);
+                }
             });
 
-            if check.detail.is_some() || check.tag_uuid.is_some() {
-                ui.add_space(theme.spacing_sm);
-                ui.horizontal_wrapped(|ui| {
-                    if let Some(detail) = &check.detail {
-                        ui.label(RichText::new(detail).color(theme.text_secondary).small());
-                    }
+            ui.add_space(theme.spacing_sm);
 
-                    if let Some(tag) = find_tag_by_uuid(&self.tags, check.tag_uuid) {
-                        show_tag_capsule(ui, tag);
-                    }
-                });
+            // Second line
+            ui.label(
+                RichText::new(&check.name)
+                    .color(theme.text_primary)
+                    .strong(),
+            );
+
+            // Third line
+            if let Some(detail) = &check.detail {
+                ui.add_space(theme.spacing_sm);
+                ui.label(RichText::new(detail).color(theme.text_secondary).small());
             }
         });
     }
@@ -142,9 +163,9 @@ impl MainContentView {
 fn repeat_label(repeat_case: &CheckRepeatType) -> String {
     match repeat_case {
         CheckRepeatType::Everytime => "Every turn".to_string(),
-        CheckRepeatType::Conditional(value) => format!("Conditional ({value})"),
-        CheckRepeatType::Specific(value) => format!("Specific ({value})"),
-        CheckRepeatType::Until(value) => format!("Until ({value})"),
+        CheckRepeatType::Conditional(value) => format!("Conditional (Turn {value})"),
+        CheckRepeatType::Specific(value) => format!("Specific (Turn {value})"),
+        CheckRepeatType::Until(value) => format!("Until (Turn {value})"),
     }
 }
 
@@ -174,7 +195,7 @@ fn show_repeat_badge(ui: &mut egui::Ui, theme: &Theme, repeat_case: &CheckRepeat
         .show(ui, |ui| {
             ui.label(
                 RichText::new(repeat_label(repeat_case))
-                    .color(theme.text_primary)
+                    .color(Color32::WHITE)
                     .small(),
             );
         });

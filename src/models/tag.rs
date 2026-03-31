@@ -4,6 +4,7 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Tag {
+    #[serde(skip_serializing)]
     pub id: i64,
     pub uuid: Uuid,
     pub name: String,
@@ -13,7 +14,11 @@ pub struct Tag {
 }
 
 impl Tag {
-    pub fn new(name: impl Into<String>, color: impl Into<String>, text_color: impl Into<String>) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        color: impl Into<String>,
+        text_color: impl Into<String>,
+    ) -> Self {
         Self {
             id: 0,
             uuid: Uuid::new_v4(),

@@ -6,6 +6,7 @@ use crate::models::{check_source_type::CheckSourceType, CheckRepeatType};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Check {
+    #[serde(skip_serializing)]
     pub id: i64,
     pub uuid: Uuid,
     pub name: String,

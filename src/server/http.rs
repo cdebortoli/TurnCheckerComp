@@ -2,6 +2,7 @@
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::sync::Arc;
 
+use axum::extract::rejection::JsonRejection;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -31,8 +32,8 @@ pub async fn spawn(pairing_state: PairingState) -> anyhow::Result<ServerConnecti
         Arc::new(SyncService::new(database::database_path())),
         pairing_state,
     )
-        .spawn()
-        .await
+    .spawn()
+    .await
 }
 
 #[derive(Clone)]
@@ -115,13 +116,14 @@ impl HttpServer {
 
     async fn sync_connect(
         State(state): State<AppState>,
-        Json(_request): Json<SyncConnectRequest>,
-    ) -> Json<SyncConnectResponse> {
+        request: Result<Json<SyncConnectRequest>, JsonRejection>,
+    ) -> Result<Json<SyncConnectResponse>, Response> {
+        let _request = parse_json_request("/sync/connect", request)?;
         state.pairing_state.mark_paired();
-        Json(SyncConnectResponse {
+        Ok(Json(SyncConnectResponse {
             ok: true,
             server_time: Utc::now(),
-        })
+        }))
     }
 
     async fn sync_pull(
@@ -133,16 +135,43 @@ impl HttpServer {
 
     async fn sync_push(
         State(state): State<AppState>,
-        Json(request): Json<SyncPushRequest>,
-    ) -> Result<Json<SyncPushResponse>, AppError> {
-        Ok(Json(state.service.push(request)?))
+        request: Result<Json<SyncPushRequest>, JsonRejection>,
+    ) -> Result<Json<SyncPushResponse>, Response> {
+        let request = parse_json_request("/sync/push", request)?;
+        match state.service.push(request) {
+            Ok(response) => Ok(Json(response)),
+            Err(error) => Err(AppError::from(error).into_response()),
+        }
     }
 
     async fn sync_ack(
         State(state): State<AppState>,
-        Json(request): Json<SyncAckRequest>,
-    ) -> Result<Json<SyncAckResponse>, AppError> {
-        Ok(Json(state.service.ack(request)?))
+        request: Result<Json<SyncAckRequest>, JsonRejection>,
+    ) -> Result<Json<SyncAckResponse>, Response> {
+        let request = parse_json_request("/sync/ack", request)?;
+        state
+            .service
+            .ack(request)
+            .map(Json)
+            .map_err(|error| AppError::from(error).into_response())
+    }
+}
+
+fn parse_json_request<T>(
+    route: &'static str,
+    request: Result<Json<T>, JsonRejection>,
+) -> Result<T, Response> {
+    match request {
+        Ok(Json(request)) => Ok(request),
+        Err(rejection) => {
+            let status = rejection.status();
+            let error = rejection.body_text();
+            eprintln!(
+                "json rejection on {route}: status={} error={error}",
+                status.as_u16()
+            );
+            Err((status, Json(ErrorResponse { error })).into_response())
+        }
     }
 }
 
@@ -174,4 +203,70 @@ fn discover_local_ip() -> anyhow::Result<IpAddr> {
     let socket = UdpSocket::bind("0.0.0.0:0")?;
     socket.connect("8.8.8.8:80")?;
     Ok(socket.local_addr()?.ip())
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::body::to_bytes;
+    use axum::http::StatusCode;
+    use uuid::Uuid;
+
+    use super::parse_json_request;
+    use crate::server::dto::{SyncConnectRequest, SyncPushRequest};
+
+    #[tokio::test]
+    async fn json_rejection_includes_unknown_top_level_field() {
+        let response = parse_json_request(
+            "/sync/connect",
+            axum::Json::<SyncConnectRequest>::from_bytes(
+                br#"{"deviceId":"ios","unexpected":true}"#,
+            ),
+        )
+        .unwrap_err();
+
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let body = String::from_utf8(body.to_vec()).unwrap();
+        assert!(body.contains("unknown field `unexpected`"));
+    }
+
+    #[tokio::test]
+    async fn json_rejection_includes_nested_field_path() {
+        let payload = format!(
+            concat!(
+                "{{",
+                "\"deviceId\":\"ios\",",
+                "\"checks\":[{{",
+                "\"id\":1,",
+                "\"uuid\":\"{}\",",
+                "\"name\":\"Scout\",",
+                "\"detail\":null,",
+                "\"source\":\"Game\",",
+                "\"repeatCase\":\"Everytime\",",
+                "\"tagUuid\":null,",
+                "\"position\":0,",
+                "\"isMandatory\":false,",
+                "\"isChecked\":false,",
+                "\"isSent\":false,",
+                "\"unexpected\":true",
+                "}}],",
+                "\"comments\":[],",
+                "\"tags\":[]",
+                "}}"
+            ),
+            Uuid::new_v4()
+        );
+
+        let response =
+            parse_json_request("/sync/push", axum::Json::<SyncPushRequest>::from_bytes(payload.as_bytes()))
+                .unwrap_err();
+
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let body = String::from_utf8(body.to_vec()).unwrap();
+        assert!(body.contains("checks[0]"));
+        assert!(body.contains("unknown field `unexpected`"));
+    }
 }

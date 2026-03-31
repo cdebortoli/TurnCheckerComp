@@ -12,7 +12,7 @@ pub(super) struct HealthResponse {
 }
 
 #[derive(Debug, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct SyncConnectRequest {
     #[allow(dead_code)]
     pub device_id: Option<String>,
@@ -33,7 +33,7 @@ pub(super) struct SyncPullQuery {
 }
 
 #[derive(Debug, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct SyncPushRequest {
     #[allow(dead_code)]
     pub device_id: Option<String>,
@@ -52,7 +52,7 @@ pub(super) struct SyncPushResponse {
 }
 
 #[derive(Debug, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct SyncAckRequest {
     #[allow(dead_code)]
     pub device_id: Option<String>,

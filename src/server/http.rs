@@ -238,7 +238,6 @@ mod tests {
                 "{{",
                 "\"deviceId\":\"ios\",",
                 "\"checks\":[{{",
-                "\"id\":1,",
                 "\"uuid\":\"{}\",",
                 "\"name\":\"Scout\",",
                 "\"detail\":null,",

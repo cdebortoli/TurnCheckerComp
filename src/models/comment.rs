@@ -28,6 +28,7 @@ impl CommentType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Comment {
+    #[serde(default, skip_deserializing)]
     pub id: i64,
     pub uuid: Uuid,
     #[serde(rename = "type")]

@@ -9,6 +9,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::Utc;
+use tokio::sync::watch;
 
 use crate::database;
 
@@ -27,10 +28,14 @@ pub struct ServerConnectionInfo {
     pub qr_payload: String,
 }
 
-pub async fn spawn(pairing_state: PairingState) -> anyhow::Result<ServerConnectionInfo> {
+pub async fn spawn(
+    pairing_state: PairingState,
+    content_refresh_tx: watch::Sender<u64>,
+) -> anyhow::Result<ServerConnectionInfo> {
     HttpServer::new(
         Arc::new(SyncService::new(database::database_path())),
         pairing_state,
+        content_refresh_tx,
     )
     .spawn()
     .await
@@ -40,6 +45,7 @@ pub async fn spawn(pairing_state: PairingState) -> anyhow::Result<ServerConnecti
 struct AppState {
     service: Arc<SyncService>,
     pairing_state: PairingState,
+    content_refresh_tx: watch::Sender<u64>,
 }
 
 pub(super) struct HttpServer {
@@ -47,11 +53,16 @@ pub(super) struct HttpServer {
 }
 
 impl HttpServer {
-    fn new(service: Arc<SyncService>, pairing_state: PairingState) -> Self {
+    fn new(
+        service: Arc<SyncService>,
+        pairing_state: PairingState,
+        content_refresh_tx: watch::Sender<u64>,
+    ) -> Self {
         Self {
             state: AppState {
                 service,
                 pairing_state,
+                content_refresh_tx,
             },
         }
     }
@@ -139,7 +150,10 @@ impl HttpServer {
     ) -> Result<Json<SyncPushResponse>, Response> {
         let request = parse_json_request("/sync/push", request)?;
         match state.service.push(request) {
-            Ok(response) => Ok(Json(response)),
+            Ok(response) => {
+                notify_content_changed(&state.content_refresh_tx);
+                Ok(Json(response))
+            }
             Err(error) => Err(AppError::from(error).into_response()),
         }
     }
@@ -152,9 +166,17 @@ impl HttpServer {
         state
             .service
             .ack(request)
-            .map(Json)
+            .map(|response| {
+                notify_content_changed(&state.content_refresh_tx);
+                Json(response)
+            })
             .map_err(|error| AppError::from(error).into_response())
     }
+}
+
+fn notify_content_changed(content_refresh_tx: &watch::Sender<u64>) {
+    let next_version = (*content_refresh_tx.borrow()).wrapping_add(1);
+    let _ = content_refresh_tx.send(next_version);
 }
 
 fn parse_json_request<T>(

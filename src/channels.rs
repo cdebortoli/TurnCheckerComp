@@ -15,19 +15,12 @@ pub enum WatcherEvent {
     Stopped,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UiChannels {
     pub watcher_command_tx: mpsc::Sender<WatcherCommand>,
     pub watcher_status_rx: watch::Receiver<WatcherEvent>,
-}
-
-impl Clone for UiChannels {
-    fn clone(&self) -> Self {
-        Self {
-            watcher_command_tx: self.watcher_command_tx.clone(),
-            watcher_status_rx: self.watcher_status_rx.clone(),
-        }
-    }
+    pub content_refresh_rx: watch::Receiver<u64>,
+    pub content_refresh_tx: watch::Sender<u64>,
 }
 
 pub struct BackgroundChannels {
@@ -44,11 +37,14 @@ impl AppChannels {
     pub fn new() -> Self {
         let (watcher_command_tx, watcher_command_rx) = mpsc::channel(16);
         let (watcher_status_tx, watcher_status_rx) = watch::channel(WatcherEvent::Idle);
+        let (content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
 
         Self {
             ui: UiChannels {
                 watcher_command_tx,
                 watcher_status_rx,
+                content_refresh_rx,
+                content_refresh_tx,
             },
             background: BackgroundChannels {
                 watcher_command_rx,

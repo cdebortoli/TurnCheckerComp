@@ -22,6 +22,7 @@ fn main() -> anyhow::Result<()> {
             ui::TurnCheckerApp::configure_fonts(&cc.egui_ctx);
             Ok(Box::new(ui::TurnCheckerApp::new(
                 runtime,
+                cc.egui_ctx.clone(),
                 channels.ui.clone(),
             )))
         }),

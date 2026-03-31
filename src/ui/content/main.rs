@@ -6,6 +6,7 @@ use crate::ui::theme::Theme;
 impl MainContentView {
     pub fn show(&mut self, ui: &mut egui::Ui) {
         let theme = Theme::from_visuals(ui.visuals());
+        self.sync_external_content_updates();
         self.reload_checks_if_needed();
         self.show_root_frame(ui, &theme);
     }

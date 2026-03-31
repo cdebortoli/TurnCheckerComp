@@ -24,25 +24,25 @@ pub struct TurnCheckerApp {
 impl TurnCheckerApp {
     pub fn configure_fonts(ctx: &egui::Context) {
         let mut fonts = egui::FontDefinitions::default();
-        let regular = egui::FontData::from_static(include_bytes!("../assets/fonts/Montserrat-Variable.ttf"))
-            .tweak(egui::FontTweak {
-                coords: egui::epaint::text::VariationCoords::new([("wght", 400.0)]),
-                ..Default::default()
-            });
-        let bold = egui::FontData::from_static(include_bytes!("../assets/fonts/Montserrat-Variable.ttf"))
-            .tweak(egui::FontTweak {
-                coords: egui::epaint::text::VariationCoords::new([("wght", 700.0)]),
-                ..Default::default()
-            });
+        let regular =
+            egui::FontData::from_static(include_bytes!("../assets/fonts/Montserrat-Variable.ttf"))
+                .tweak(egui::FontTweak {
+                    coords: egui::epaint::text::VariationCoords::new([("wght", 400.0)]),
+                    ..Default::default()
+                });
+        let bold =
+            egui::FontData::from_static(include_bytes!("../assets/fonts/Montserrat-Variable.ttf"))
+                .tweak(egui::FontTweak {
+                    coords: egui::epaint::text::VariationCoords::new([("wght", 700.0)]),
+                    ..Default::default()
+                });
 
-        fonts.font_data.insert(
-            "montserrat_regular".to_owned(),
-            regular.into(),
-        );
-        fonts.font_data.insert(
-            "montserrat_bold".to_owned(),
-            bold.into(),
-        );
+        fonts
+            .font_data
+            .insert("montserrat_regular".to_owned(), regular.into());
+        fonts
+            .font_data
+            .insert("montserrat_bold".to_owned(), bold.into());
 
         if let Some(family) = fonts.families.get_mut(&egui::FontFamily::Proportional) {
             family.insert(0, "montserrat_regular".to_owned());
@@ -55,13 +55,22 @@ impl TurnCheckerApp {
         ctx.set_fonts(fonts);
     }
 
-    pub fn new(runtime: Runtime, channels: UiChannels) -> Self {
+    pub fn new(runtime: Runtime, repaint_ctx: egui::Context, channels: UiChannels) -> Self {
+        let mut repaint_refresh_rx = channels.content_refresh_rx.clone();
+        //let repaint_ctx_for_task = repaint_ctx.clone();
+        runtime.spawn(async move {
+            while repaint_refresh_rx.changed().await.is_ok() {
+                // repaint_ctx_for_task.request_repaint();
+                repaint_ctx.request_repaint();
+            }
+        });
+
         Self {
             runtime,
-            _channels: channels,
-            startup: StartupController::new(),
+            _channels: channels.clone(),
+            startup: StartupController::new(channels.content_refresh_tx.clone()),
             pairing: PairingView::new(),
-            content: MainContentView::new(),
+            content: MainContentView::new(channels.content_refresh_rx.clone()),
         }
     }
 

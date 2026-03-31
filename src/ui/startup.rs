@@ -1,5 +1,6 @@
 use eframe::egui;
 use tokio::runtime::Runtime;
+use tokio::sync::watch;
 
 use crate::{database, server};
 
@@ -11,6 +12,7 @@ pub struct StartupController {
     state: StartupState,
     server_started: bool,
     server_connection: Option<server::ServerConnectionInfo>,
+    content_refresh_tx: watch::Sender<u64>,
 }
 
 enum StartupState {
@@ -20,7 +22,7 @@ enum StartupState {
 }
 
 impl StartupController {
-    pub fn new() -> Self {
+    pub fn new(content_refresh_tx: watch::Sender<u64>) -> Self {
         let state = match database::inspect_startup_state() {
             Ok(database::DatabaseStartupState::Ready) => StartupState::Ready,
             Ok(database::DatabaseStartupState::NeedsUserDecision { unsent_records }) => {
@@ -33,6 +35,7 @@ impl StartupController {
             state,
             server_started: false,
             server_connection: None,
+            content_refresh_tx,
         }
     }
 
@@ -133,7 +136,10 @@ impl StartupController {
             return;
         }
 
-        match runtime.block_on(server::spawn(pairing_state)) {
+        match runtime.block_on(server::spawn(
+            pairing_state,
+            self.content_refresh_tx.clone(),
+        )) {
             Ok(server_connection) => {
                 self.server_started = true;
                 self.server_connection = Some(server_connection);

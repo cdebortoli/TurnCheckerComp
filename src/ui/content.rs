@@ -7,6 +7,7 @@ use crate::database;
 use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType, Tag};
 use eframe::egui;
+use tokio::sync::watch;
 use uuid::Uuid;
 
 pub struct MainContentView {
@@ -16,6 +17,7 @@ pub struct MainContentView {
     new_check_draft: NewCheckDraft,
     error_message: Option<String>,
     needs_reload: bool,
+    content_refresh_rx: watch::Receiver<u64>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -38,7 +40,7 @@ struct NewCheckDraft {
 }
 
 impl MainContentView {
-    pub fn new() -> Self {
+    pub fn new(content_refresh_rx: watch::Receiver<u64>) -> Self {
         Self {
             mode: ContentMode::General,
             checks: Vec::new(),
@@ -46,6 +48,17 @@ impl MainContentView {
             new_check_draft: NewCheckDraft::default(),
             error_message: None,
             needs_reload: true,
+            content_refresh_rx,
+        }
+    }
+
+    fn sync_external_content_updates(&mut self) {
+        match self.content_refresh_rx.has_changed() {
+            Ok(true) => {
+                self.content_refresh_rx.borrow_and_update();
+                self.needs_reload = true;
+            }
+            Ok(false) | Err(_) => {}
         }
     }
 
@@ -197,8 +210,9 @@ fn show_tag_capsule(ui: &mut egui::Ui, tag: &Tag) {
 
 #[cfg(test)]
 mod tests {
-    use super::NewCheckDraft;
+    use super::{MainContentView, NewCheckDraft};
     use crate::models::CheckRepeatType;
+    use tokio::sync::watch;
     use uuid::Uuid;
 
     #[test]
@@ -241,5 +255,18 @@ mod tests {
         let check = draft.to_check().expect("draft should convert");
         assert_eq!(check.repeat_case, CheckRepeatType::Specific(4));
         assert_eq!(check.tag_uuid, Some(tag_uuid));
+    }
+
+    #[test]
+    fn external_refresh_marks_content_dirty() {
+        let (content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
+        let mut view = MainContentView::new(content_refresh_rx);
+        view.needs_reload = false;
+
+        content_refresh_tx.send(1).expect("refresh signal should send");
+        view.sync_external_content_updates();
+
+        assert!(view.needs_reload);
+        assert!(!view.content_refresh_rx.has_changed().unwrap());
     }
 }

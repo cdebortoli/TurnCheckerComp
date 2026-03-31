@@ -86,7 +86,7 @@ impl MainContentView {
     }
 
     fn update_check_status(&mut self, mut check: Check, is_checked: bool) -> Result<(), String> {
-        check.is_checked = is_checked;
+        check = apply_check_status_update(check, is_checked);
         let connection = database::establish_connection().map_err(|err| err.to_string())?;
         database::checks::update(&connection, &check).map_err(|err| err.to_string())?;
         self.needs_reload = true;
@@ -173,6 +173,12 @@ fn trimmed_option(value: &str) -> Option<String> {
     }
 }
 
+fn apply_check_status_update(mut check: Check, is_checked: bool) -> Check {
+    check.is_checked = is_checked;
+    check.is_sent = false;
+    check
+}
+
 fn find_tag_by_uuid<'a>(tags: &'a [Tag], tag_uuid: Option<Uuid>) -> Option<&'a Tag> {
     let tag_uuid = tag_uuid?;
     tags.iter().find(|tag| tag.uuid == tag_uuid)
@@ -210,8 +216,9 @@ fn show_tag_capsule(ui: &mut egui::Ui, tag: &Tag) {
 
 #[cfg(test)]
 mod tests {
-    use super::{MainContentView, NewCheckDraft};
+    use super::{apply_check_status_update, MainContentView, NewCheckDraft};
     use crate::models::CheckRepeatType;
+    use crate::models::Check;
     use tokio::sync::watch;
     use uuid::Uuid;
 
@@ -268,5 +275,16 @@ mod tests {
 
         assert!(view.needs_reload);
         assert!(!view.content_refresh_rx.has_changed().unwrap());
+    }
+
+    #[test]
+    fn local_status_update_marks_check_unsent() {
+        let mut check = Check::new("Scout");
+        check.is_sent = true;
+
+        let updated = apply_check_status_update(check, true);
+
+        assert!(updated.is_checked);
+        assert!(!updated.is_sent);
     }
 }

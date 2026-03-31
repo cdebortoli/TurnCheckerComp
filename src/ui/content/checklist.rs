@@ -129,12 +129,8 @@ impl MainContentView {
     }
 
     fn show_check_toggle(&mut self, ui: &mut egui::Ui, check: &Check, selected_checked: &mut bool) {
-        if ui.checkbox(selected_checked, "").changed() {
-            let is_checked = *selected_checked;
-            if let Err(error) = self.update_check_status(check.clone(), is_checked) {
-                self.error_message = Some(error);
-            }
-        }
+        //let _ = check;
+        ui.checkbox(selected_checked, "");
     }
 
     fn show_sent_status_icon(&self, ui: &mut egui::Ui, theme: &Theme, check: &Check) {

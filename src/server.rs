@@ -23,7 +23,7 @@ mod tests {
         let db_path = temp_dir.join("sync.db");
         let service = SyncService::new(db_path.clone());
 
-        let connection = database::establish_connection_at(db_path)?;
+        let connection = database::establish_connection_at(&db_path)?;
         let mut local_check = Check::new("Scout");
         local_check.is_sent = false;
         database::checks::insert(&connection, &local_check)?;

@@ -42,7 +42,7 @@ pub fn insert(connection: &Connection, check: &Check) -> Result<i64> {
 }
 
 pub fn fetch_all(connection: &Connection) -> Result<Vec<Check>> {
-    let source = CheckSourceType::Game.to_storage();
+    let source = CheckSourceType::GlobalGame.to_storage();
 
     let mut statement = connection.prepare(
       "SELECT id, uuid, name, detail, source, repeat_type, repeat_value, tag_uuid, position, is_mandatory, is_checked, is_sent
@@ -271,6 +271,82 @@ mod tests {
 
         assert_eq!(fetched.id, id);
         assert_eq!(fetched.source, CheckSourceType::Game);
+
+        Ok(())
+    }
+
+    #[test]
+    fn fetch_all_prioritizes_global_game_checks() -> Result<()> {
+        let connection = establish_in_memory_connection()?;
+
+        let mut global_check = Check::new("Global check");
+        global_check.source = CheckSourceType::GlobalGame;
+
+        let mut game_check = Check::new("Game check");
+        game_check.source = CheckSourceType::Game;
+
+        let turn_check = Check::new("Turn check");
+
+        super::insert(&connection, &global_check)?;
+        super::insert(&connection, &game_check)?;
+        super::insert(&connection, &turn_check)?;
+
+        let mut fetched_global =
+            super::fetch_by_uuid(&connection, &global_check.uuid)?.expect("global check exists");
+        fetched_global.position = 99;
+        super::update(&connection, &fetched_global)?;
+
+        let mut fetched_game =
+            super::fetch_by_uuid(&connection, &game_check.uuid)?.expect("game check exists");
+        fetched_game.position = 2;
+        super::update(&connection, &fetched_game)?;
+
+        let mut fetched_turn =
+            super::fetch_by_uuid(&connection, &turn_check.uuid)?.expect("turn check exists");
+        fetched_turn.position = 1;
+        super::update(&connection, &fetched_turn)?;
+
+        let checks = super::fetch_all(&connection)?;
+
+        assert_eq!(checks.len(), 3);
+        assert_eq!(checks[0].source, CheckSourceType::GlobalGame);
+        assert_eq!(checks[0].name, "Global check");
+        assert_eq!(checks[1].name, "Turn check");
+        assert_eq!(checks[2].name, "Game check");
+
+        Ok(())
+    }
+
+    #[test]
+    fn upsert_preserves_global_game_priority_in_fetch_all() -> Result<()> {
+        let connection = establish_in_memory_connection()?;
+
+        let mut global_check = Check::new("Global check");
+        global_check.source = CheckSourceType::GlobalGame;
+        super::insert(&connection, &global_check)?;
+
+        let mut game_check = Check::new("Game check");
+        game_check.source = CheckSourceType::Game;
+        super::insert(&connection, &game_check)?;
+
+        let mut fetched_global = super::fetch_by_uuid(&connection, &global_check.uuid)?
+            .expect("global check exists");
+        fetched_global.position = 99;
+        fetched_global.is_sent = true;
+
+        let mut fetched_game =
+            super::fetch_by_uuid(&connection, &game_check.uuid)?.expect("game check exists");
+        fetched_game.position = 1;
+        super::update(&connection, &fetched_game)?;
+
+        super::upsert(&connection, &fetched_global)?;
+
+        let checks = super::fetch_all(&connection)?;
+
+        assert_eq!(checks.len(), 2);
+        assert_eq!(checks[0].source, CheckSourceType::GlobalGame);
+        assert_eq!(checks[0].uuid, global_check.uuid);
+        assert!(checks[0].is_sent);
 
         Ok(())
     }

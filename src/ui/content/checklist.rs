@@ -4,6 +4,7 @@ use egui::Color32;
 use super::{find_tag_by_uuid, show_tag_capsule, MainContentView};
 use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType};
+use crate::ui::content::toggle_button::toggle;
 use crate::ui::theme::Theme;
 
 impl MainContentView {
@@ -65,7 +66,7 @@ impl MainContentView {
             self.show_check_card_title(ui, theme, check);
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 self.show_sent_status_icon(ui, theme, check);
-                self.show_check_toggle(ui, check, selected_checked);
+                self.show_check_toggle(ui, selected_checked, theme);
                 self.show_mandatory_indicator(ui, theme, check);
             });
             indicator_rect
@@ -128,9 +129,8 @@ impl MainContentView {
         }
     }
 
-    fn show_check_toggle(&mut self, ui: &mut egui::Ui, check: &Check, selected_checked: &mut bool) {
-        //let _ = check;
-        ui.checkbox(selected_checked, "");
+    fn show_check_toggle(&mut self, ui: &mut egui::Ui, selected_checked: &mut bool, theme: &Theme) {
+        ui.add(toggle(selected_checked, theme));
     }
 
     fn show_sent_status_icon(&self, ui: &mut egui::Ui, theme: &Theme, check: &Check) {

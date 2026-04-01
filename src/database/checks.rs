@@ -7,11 +7,9 @@ use crate::models::{Check, CheckRepeatType};
 pub fn insert(connection: &Connection, check: &Check) -> Result<i64> {
     // Auto-generate position as max existing position + 1
     let max_position: Option<i32> = connection
-        .query_row(
-            "SELECT COALESCE(MAX(position), 0) FROM checks",
-            [],
-            |row| row.get(0),
-        )
+        .query_row("SELECT COALESCE(MAX(position), 0) FROM checks", [], |row| {
+            row.get(0)
+        })
         .optional()?;
     let position = match max_position {
         Some(max) => max + 1,
@@ -44,12 +42,20 @@ pub fn insert(connection: &Connection, check: &Check) -> Result<i64> {
 }
 
 pub fn fetch_all(connection: &Connection) -> Result<Vec<Check>> {
+    let source = CheckSourceType::Game.to_storage();
+
     let mut statement = connection.prepare(
-        "SELECT id, uuid, name, detail, source, repeat_type, repeat_value, tag_uuid, position, is_mandatory, is_checked, is_sent
-         FROM checks
-         ORDER BY position, name",
+      "SELECT id, uuid, name, detail, source, repeat_type, repeat_value, tag_uuid, position, is_mandatory, is_checked, is_sent
+      FROM checks
+      ORDER BY
+        CASE
+          WHEN source = ?1 THEN 0
+          ELSE 1
+        END,
+        position,
+        name",
     )?;
-    let rows = statement.query_map([], row_to_check)?;
+    let rows = statement.query_map([source], row_to_check)?;
 
     let checks = rows.collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(checks)

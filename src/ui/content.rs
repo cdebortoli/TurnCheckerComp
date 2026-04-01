@@ -2,6 +2,7 @@ mod checklist;
 mod comments;
 mod main;
 mod new_check;
+mod toggle_button;
 
 use crate::database;
 use crate::models::check_source_type::CheckSourceType;
@@ -128,9 +129,10 @@ impl NewCheckDraft {
 
         let repeat_case = match self.repeat_case {
             CheckRepeatType::Everytime => CheckRepeatType::Everytime,
-            CheckRepeatType::Conditional(_) => {
-                CheckRepeatType::Conditional(parse_positive_i32(&self.repeat_value, "Repeat value")?)
-            }
+            CheckRepeatType::Conditional(_) => CheckRepeatType::Conditional(parse_positive_i32(
+                &self.repeat_value,
+                "Repeat value",
+            )?),
             CheckRepeatType::Specific(_) => {
                 CheckRepeatType::Specific(parse_positive_i32(&self.repeat_value, "Repeat value")?)
             }
@@ -210,15 +212,20 @@ fn show_tag_capsule(ui: &mut egui::Ui, tag: &Tag) {
         .corner_radius(999.0)
         .inner_margin(egui::Margin::symmetric(10, 4))
         .show(ui, |ui| {
-            ui.label(egui::RichText::new(&tag.name).color(tag_text_color(tag)).small());
+            ui.label(
+                egui::RichText::new(&tag.name)
+                    .family(egui::FontFamily::Name("montserrat-bold".into()))
+                    .color(tag_text_color(tag))
+                    .small(),
+            );
         });
 }
 
 #[cfg(test)]
 mod tests {
     use super::{apply_check_status_update, MainContentView, NewCheckDraft};
-    use crate::models::CheckRepeatType;
     use crate::models::Check;
+    use crate::models::CheckRepeatType;
     use tokio::sync::watch;
     use uuid::Uuid;
 
@@ -270,7 +277,9 @@ mod tests {
         let mut view = MainContentView::new(content_refresh_rx);
         view.needs_reload = false;
 
-        content_refresh_tx.send(1).expect("refresh signal should send");
+        content_refresh_tx
+            .send(1)
+            .expect("refresh signal should send");
         view.sync_external_content_updates();
 
         assert!(view.needs_reload);

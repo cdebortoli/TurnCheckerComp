@@ -5,7 +5,9 @@ use chrono::Utc;
 
 use crate::database;
 
-use super::dto::{SyncAckRequest, SyncAckResponse, SyncPullResponse, SyncPushRequest, SyncPushResponse};
+use super::dto::{
+    SyncAckRequest, SyncAckResponse, SyncPullResponse, SyncPushRequest, SyncPushResponse,
+};
 
 #[derive(Debug, Clone)]
 pub(super) struct SyncService {
@@ -18,7 +20,7 @@ impl SyncService {
     }
 
     pub(super) fn pull(&self, limit: Option<usize>) -> anyhow::Result<SyncPullResponse> {
-        let connection = database::establish_connection_at(self.database_path.clone())?;
+        let connection = database::establish_connection_at(&self.database_path)?;
 
         Ok(SyncPullResponse {
             checks: database::checks::fetch_unsent(&connection, limit)?,
@@ -29,7 +31,7 @@ impl SyncService {
     }
 
     pub(super) fn push(&self, request: SyncPushRequest) -> anyhow::Result<SyncPushResponse> {
-        let connection = database::establish_connection_at(self.database_path.clone())?;
+        let connection = database::establish_connection_at(&self.database_path)?;
 
         let mut checks_upserted = 0;
         for mut check in request.checks {
@@ -61,7 +63,7 @@ impl SyncService {
     }
 
     pub(super) fn ack(&self, request: SyncAckRequest) -> anyhow::Result<SyncAckResponse> {
-        let connection = database::establish_connection_at(self.database_path.clone())?;
+        let connection = database::establish_connection_at(&self.database_path)?;
 
         Ok(SyncAckResponse {
             checks_marked_sent: database::checks::mark_sent_by_uuids(&connection, &request.checks)?,

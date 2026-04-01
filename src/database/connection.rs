@@ -18,7 +18,7 @@ pub fn database_path() -> PathBuf {
 }
 
 pub fn establish_connection() -> Result<Connection> {
-    establish_connection_at(database_path())
+    establish_connection_at(&database_path())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,7 +27,7 @@ pub enum DatabaseStartupState {
     NeedsUserDecision { unsent_records: usize },
 }
 
-pub fn establish_connection_at(path: PathBuf) -> Result<Connection> {
+pub fn establish_connection_at(path: &PathBuf) -> Result<Connection> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -52,7 +52,7 @@ pub fn inspect_startup_state() -> Result<DatabaseStartupState> {
 
 pub fn inspect_startup_state_at(path: PathBuf) -> Result<DatabaseStartupState> {
     let file_exists = path.exists();
-    let connection = establish_connection_at(path)?;
+    let connection = establish_connection_at(&path)?;
     if !file_exists {
         return Ok(DatabaseStartupState::Ready);
     }
@@ -61,6 +61,8 @@ pub fn inspect_startup_state_at(path: PathBuf) -> Result<DatabaseStartupState> {
     if unsent_records > 0 {
         Ok(DatabaseStartupState::NeedsUserDecision { unsent_records })
     } else {
+        drop(connection);
+        reset_database_at(path)?;
         Ok(DatabaseStartupState::Ready)
     }
 }
@@ -74,7 +76,7 @@ pub fn reset_database_at(path: PathBuf) -> Result<()> {
     remove_if_exists(&wal_path(&path))?;
     remove_if_exists(&shm_path(&path))?;
 
-    let _connection = establish_connection_at(path)?;
+    let _connection = establish_connection_at(&path)?;
     Ok(())
 }
 
@@ -244,7 +246,7 @@ mod tests {
             DatabaseStartupState::Ready
         );
 
-        let connection = establish_connection_at(db_path.clone())?;
+        let connection = establish_connection_at(&db_path)?;
         let check = Check::new("Scout");
         checks::insert(&connection, &check)?;
 
@@ -257,20 +259,46 @@ mod tests {
     }
 
     #[test]
+    fn startup_state_resets_existing_database_without_unsent_records() -> Result<()> {
+        let temp_dir = std::env::temp_dir().join(format!(
+            "turn-checker-startup-reset-{}",
+            uuid::Uuid::new_v4()
+        ));
+        std::fs::create_dir_all(&temp_dir)?;
+        let db_path = temp_dir.join("startup-reset.db");
+
+        let connection = establish_connection_at(&db_path)?;
+        let mut check = Check::new("Sent");
+        check.is_sent = true;
+        checks::insert(&connection, &check)?;
+        drop(connection);
+
+        assert_eq!(
+            inspect_startup_state_at(db_path.clone())?,
+            DatabaseStartupState::Ready
+        );
+
+        let connection = establish_connection_at(&db_path)?;
+        assert!(checks::fetch_all(&connection)?.is_empty());
+
+        Ok(())
+    }
+
+    #[test]
     fn reset_database_recreates_empty_schema() -> Result<()> {
         let temp_dir =
             std::env::temp_dir().join(format!("turn-checker-reset-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&temp_dir)?;
         let db_path = temp_dir.join("reset.db");
 
-        let connection = establish_connection_at(db_path.clone())?;
+        let connection = establish_connection_at(&db_path)?;
         let check = Check::new("Cleanup");
         checks::insert(&connection, &check)?;
         drop(connection);
 
         reset_database_at(db_path.clone())?;
 
-        let connection = establish_connection_at(db_path)?;
+        let connection = establish_connection_at(&db_path)?;
         assert!(checks::fetch_all(&connection)?.is_empty());
 
         Ok(())
@@ -297,11 +325,11 @@ mod tests {
         std::fs::create_dir_all(&temp_dir)?;
         let db_path = temp_dir.join("reopen.db");
 
-        let connection = establish_connection_at(db_path.clone())?;
+        let connection = establish_connection_at(&db_path)?;
         assert!(checks::fetch_all(&connection)?.is_empty());
         drop(connection);
 
-        let reopened = establish_connection_at(db_path)?;
+        let reopened = establish_connection_at(&db_path)?;
         assert!(checks::fetch_all(&reopened)?.is_empty());
 
         Ok(())

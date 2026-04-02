@@ -1,15 +1,17 @@
 mod checklist;
 mod comments;
-mod main_content_view;
 mod new_check;
+mod new_check_draft;
 mod toggle_button;
 
 use crate::database;
-use crate::models::check_source_type::CheckSourceType;
-use crate::models::{Check, CheckRepeatType, Tag};
-use eframe::egui;
+use crate::models::{Check, Tag};
+use crate::ui::theme::Theme;
+use eframe::egui::{self, RichText};
 use tokio::sync::watch;
 use uuid::Uuid;
+
+use self::new_check_draft::NewCheckDraft;
 
 pub struct MainContentView {
     mode: ContentMode,
@@ -31,18 +33,6 @@ enum ContentMode {
     General,
     NewCheck,
     Comments,
-}
-
-#[derive(Clone)]
-struct NewCheckDraft {
-    name: String,
-    detail: String,
-    selected_tag_uuid: Option<Uuid>,
-    source: CheckSourceType,
-    repeat_case: CheckRepeatType,
-    repeat_value: String,
-    is_mandatory: bool,
-    is_checked: bool,
 }
 
 impl MainContentView {
@@ -142,75 +132,149 @@ impl MainContentView {
         let connection = database::establish_connection().map_err(|err| err.to_string())?;
         database::checks::count_unsent(&connection).map_err(|err| err.to_string())
     }
-}
 
-impl Default for NewCheckDraft {
-    fn default() -> Self {
-        Self {
-            name: String::new(),
-            detail: String::new(),
-            selected_tag_uuid: None,
-            source: CheckSourceType::Game,
-            repeat_case: CheckRepeatType::Everytime,
-            repeat_value: String::new(),
-            is_mandatory: false,
-            is_checked: false,
+    pub fn show(&mut self, ui: &mut egui::Ui) -> Option<ContentAction> {
+        let theme = Theme::from_visuals(ui.visuals());
+        let mut action = None;
+        self.sync_external_content_updates();
+        self.reload_checks_if_needed();
+        self.show_root_frame(ui, &theme, &mut action);
+        action
+    }
+
+    fn show_root_frame(
+        &mut self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        action: &mut Option<ContentAction>,
+    ) {
+        egui::Frame::new()
+            .fill(theme.bg_primary)
+            .inner_margin(theme.spacing_lg)
+            .show(ui, |ui| {
+                self.show_top_bar(ui, theme, action);
+                ui.add_space(theme.spacing_md);
+                self.show_error_message(ui, theme);
+                self.show_active_content(ui, theme);
+            });
+        self.show_restart_confirmation(ui, theme, action);
+    }
+
+    fn show_top_bar(
+        &mut self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        action: &mut Option<ContentAction>,
+    ) {
+        ui.horizontal(|ui| {
+            if self.mode != ContentMode::General {
+                if ui
+                    .button(RichText::new("Back").color(theme.text_primary))
+                    .clicked()
+                {
+                    self.mode = ContentMode::General;
+                    self.error_message = None;
+                }
+            } else {
+                self.show_mode_button(ui, theme, "New Check", ContentMode::NewCheck);
+                self.show_mode_button(ui, theme, "Comments", ContentMode::Comments);
+                self.show_restart_button(ui, theme, action);
+            }
+        });
+    }
+
+    fn show_mode_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        label: &str,
+        target_mode: ContentMode,
+    ) {
+        let button = egui::Button::new(RichText::new(label).color(theme.text_primary))
+            .fill(if self.mode == target_mode {
+                theme.accent
+            } else {
+                theme.bg_secondary
+            })
+            .corner_radius(theme.corner_radius);
+
+        if ui.add(button).clicked() {
+            self.mode = target_mode;
+            self.error_message = None;
         }
     }
-}
 
-impl NewCheckDraft {
-    fn to_check(&self) -> Result<Check, String> {
-        let name = self.name.trim();
-        if name.is_empty() {
-            return Err("Name is required.".to_string());
+    fn show_restart_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        action: &mut Option<ContentAction>,
+    ) {
+        let button = egui::Button::new(RichText::new("Restart").color(theme.text_primary))
+            .fill(theme.bg_secondary)
+            .corner_radius(theme.corner_radius);
+
+        if ui.add(button).clicked() {
+            *action = self.handle_restart_click();
         }
+    }
 
-        let repeat_case = match self.repeat_case {
-            CheckRepeatType::Everytime => CheckRepeatType::Everytime,
-            CheckRepeatType::Conditional(_) => CheckRepeatType::Conditional(parse_positive_i32(
-                &self.repeat_value,
-                "Repeat value",
-            )?),
-            CheckRepeatType::Specific(_) => {
-                CheckRepeatType::Specific(parse_positive_i32(&self.repeat_value, "Repeat value")?)
-            }
-            CheckRepeatType::Until(_) => {
-                CheckRepeatType::Until(parse_positive_i32(&self.repeat_value, "Repeat value")?)
-            }
+    fn show_restart_confirmation(
+        &mut self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        action: &mut Option<ContentAction>,
+    ) {
+        let Some(unsent_checks) = self.restart_confirmation_unsent_checks else {
+            return;
         };
 
-        let mut check = Check::new(name);
-        check.detail = trimmed_option(&self.detail);
-        check.tag_uuid = self.selected_tag_uuid;
-        check.source = self.source.clone();
-        check.repeat_case = repeat_case;
-        check.is_mandatory = self.is_mandatory;
-        check.is_checked = self.is_checked;
-        check.is_sent = false;
-        Ok(check)
+        let ctx = ui.ctx().clone();
+        egui::Window::new("Restart")
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .collapsible(false)
+            .resizable(false)
+            .show(&ctx, |ui| {
+                ui.label(
+                    RichText::new(format!(
+                        "The database contains {unsent_checks} unsent check(s)."
+                    ))
+                    .color(theme.text_primary),
+                );
+                ui.label(
+                    RichText::new(
+                        "Restarting will delete and recreate the database, then return to the pairing screen.",
+                    )
+                    .color(theme.text_muted),
+                );
+                ui.add_space(theme.spacing_md);
+
+                ui.horizontal(|ui| {
+                    if ui.button("Cancel").clicked() {
+                        self.restart_confirmation_unsent_checks = None;
+                    }
+
+                    if ui.button("Restart").clicked() {
+                        self.restart_confirmation_unsent_checks = None;
+                        *action = Some(ContentAction::RestartRequested);
+                    }
+                });
+            });
     }
-}
 
-fn parse_positive_i32(value: &str, field_name: &str) -> Result<i32, String> {
-    let parsed = value
-        .trim()
-        .parse::<i32>()
-        .map_err(|_| format!("{field_name} must be a valid integer."))?;
-
-    if parsed < 1 {
-        return Err(format!("{field_name} must be at least 1."));
+    fn show_error_message(&self, ui: &mut egui::Ui, theme: &Theme) {
+        if let Some(error) = &self.error_message {
+            ui.label(RichText::new(error).color(theme.destructive));
+            ui.add_space(theme.spacing_md);
+        }
     }
 
-    Ok(parsed)
-}
-
-fn trimmed_option(value: &str) -> Option<String> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        None
-    } else {
-        Some(trimmed.to_string())
+    fn show_active_content(&mut self, ui: &mut egui::Ui, theme: &Theme) {
+        match self.mode {
+            ContentMode::General => self.show_general_content(ui, theme),
+            ContentMode::NewCheck => self.show_new_check_content(ui, theme),
+            ContentMode::Comments => self.show_comments_content(ui, theme),
+        }
     }
 }
 
@@ -262,53 +326,9 @@ fn show_tag_capsule(ui: &mut egui::Ui, tag: &Tag) {
 
 #[cfg(test)]
 mod tests {
-    use super::{apply_check_status_update, MainContentView, NewCheckDraft};
+    use super::{apply_check_status_update, MainContentView};
     use crate::models::Check;
-    use crate::models::CheckRepeatType;
     use tokio::sync::watch;
-    use uuid::Uuid;
-
-    #[test]
-    fn draft_builds_everytime_check() {
-        let draft = NewCheckDraft {
-            name: "Scout".to_string(),
-            ..Default::default()
-        };
-
-        let check = draft.to_check().expect("draft should convert");
-        assert_eq!(check.name, "Scout");
-        assert_eq!(check.repeat_case, CheckRepeatType::Everytime);
-        assert_eq!(check.tag_uuid, None);
-    }
-
-    #[test]
-    fn draft_requires_positive_repeat_value() {
-        let draft = NewCheckDraft {
-            name: "Scout".to_string(),
-            repeat_case: CheckRepeatType::Until(1),
-            repeat_value: "0".to_string(),
-            ..Default::default()
-        };
-
-        let error = draft.to_check().expect_err("repeat value should fail");
-        assert!(error.contains("at least 1"));
-    }
-
-    #[test]
-    fn draft_builds_non_default_repeat_type() {
-        let tag_uuid = Uuid::new_v4();
-        let draft = NewCheckDraft {
-            name: "Scout".to_string(),
-            selected_tag_uuid: Some(tag_uuid),
-            repeat_case: CheckRepeatType::Specific(1),
-            repeat_value: "4".to_string(),
-            ..Default::default()
-        };
-
-        let check = draft.to_check().expect("draft should convert");
-        assert_eq!(check.repeat_case, CheckRepeatType::Specific(4));
-        assert_eq!(check.tag_uuid, Some(tag_uuid));
-    }
 
     #[test]
     fn external_refresh_marks_content_dirty() {

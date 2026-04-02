@@ -1,6 +1,6 @@
 mod checklist;
 mod comments;
-mod main;
+mod main_content_view;
 mod new_check;
 mod toggle_button;
 

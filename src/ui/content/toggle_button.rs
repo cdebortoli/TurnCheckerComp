@@ -13,9 +13,15 @@ pub fn toggle_button(ui: &mut egui::Ui, on: &mut bool, theme: &Theme) -> egui::R
 
     if ui.is_rect_visible(rect) {
         let how_on = ui.ctx().animate_bool_responsive(response.id, *on);
-        let visuals = ui.style().interact_selectable(&response, *on);
+        let mut visuals = ui.style().interact_selectable(&response, *on);
+
+        let off = egui::Rgba::from(theme.text_secondary);
+        let on = egui::Rgba::from(theme.accent);
+        visuals.bg_fill = egui::lerp(off..=on, how_on).into();
+
         let rect = rect.expand(visuals.expansion);
         let radius = 0.5 * rect.height();
+
         ui.painter().rect(
             rect,
             radius,
@@ -23,10 +29,16 @@ pub fn toggle_button(ui: &mut egui::Ui, on: &mut bool, theme: &Theme) -> egui::R
             visuals.bg_stroke,
             egui::StrokeKind::Inside,
         );
+
         let circle_x = egui::lerp((rect.left() + radius)..=(rect.right() - radius), how_on);
         let center = egui::pos2(circle_x, rect.center().y);
-        ui.painter()
-            .circle(center, 0.75 * radius, theme.accent, visuals.fg_stroke);
+
+        ui.painter().circle(
+            center,
+            0.75 * radius,
+            egui::Color32::WHITE,
+            visuals.fg_stroke,
+        );
     }
 
     response

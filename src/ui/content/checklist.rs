@@ -151,30 +151,30 @@ impl MainContentView {
         if check.is_sent {
             ui.painter().line_segment(
                 [
-                    egui::pos2(rect.left() + 4.5, rect.center().y + 0.5),
-                    egui::pos2(rect.left() + 8.5, rect.bottom() - 5.0),
+                    egui::pos2(rect.left() + 5.5, rect.center().y + 1.5),
+                    egui::pos2(rect.left() + 9.5, rect.bottom() - 6.0),
                 ],
                 stroke,
             );
             ui.painter().line_segment(
                 [
-                    egui::pos2(rect.left() + 8.5, rect.bottom() - 5.0),
-                    egui::pos2(rect.right() - 4.0, rect.top() + 5.0),
+                    egui::pos2(rect.left() + 9.5, rect.bottom() - 6.0),
+                    egui::pos2(rect.right() - 5.0, rect.top() + 6.0),
                 ],
                 stroke,
             );
         } else {
             ui.painter().line_segment(
                 [
-                    egui::pos2(rect.left() + 5.0, rect.top() + 5.0),
-                    egui::pos2(rect.right() - 5.0, rect.bottom() - 5.0),
+                    egui::pos2(rect.left() + 6.0, rect.top() + 6.0),
+                    egui::pos2(rect.right() - 6.0, rect.bottom() - 6.0),
                 ],
                 stroke,
             );
             ui.painter().line_segment(
                 [
-                    egui::pos2(rect.left() + 5.0, rect.bottom() - 5.0),
-                    egui::pos2(rect.right() - 5.0, rect.top() + 5.0),
+                    egui::pos2(rect.left() + 6.0, rect.bottom() - 6.0),
+                    egui::pos2(rect.right() - 6.0, rect.top() + 6.0),
                 ],
                 stroke,
             );

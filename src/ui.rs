@@ -9,7 +9,7 @@ use tokio::runtime::Runtime;
 
 use crate::channels::UiChannels;
 
-use self::content::MainContentView;
+use self::content::{ContentAction, MainContentView};
 use self::pairing::PairingView;
 use self::startup::StartupController;
 
@@ -85,6 +85,26 @@ impl TurnCheckerApp {
     }
 }
 
+impl TurnCheckerApp {
+    fn handle_content_action(&mut self, action: ContentAction) {
+        match action {
+            ContentAction::RestartRequested => self.restart_to_pairing(),
+        }
+    }
+
+    fn restart_to_pairing(&mut self) {
+        match crate::database::reset_database() {
+            Ok(()) => {
+                self.pairing.pairing_state().reset();
+                self.content.prepare_for_restart();
+                let next_version = (*self._channels.content_refresh_tx.borrow()).wrapping_add(1);
+                let _ = self._channels.content_refresh_tx.send(next_version);
+            }
+            Err(error) => self.content.set_error_message(error.to_string()),
+        }
+    }
+}
+
 impl eframe::App for TurnCheckerApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         // Get theme once at the start
@@ -109,7 +129,9 @@ impl eframe::App for TurnCheckerApp {
                 if !self.startup.is_ready() {
                     self.startup.show_status(ui, &theme);
                 } else if self.pairing.is_paired() {
-                    self.content.show(ui);
+                    if let Some(action) = self.content.show(ui) {
+                        self.handle_content_action(action);
+                    }
                 } else if self.startup.server_started() {
                     self.pairing.show_waiting(ui);
                 } else {

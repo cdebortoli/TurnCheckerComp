@@ -17,8 +17,13 @@ pub struct MainContentView {
     tags: Vec<Tag>,
     new_check_draft: NewCheckDraft,
     error_message: Option<String>,
+    restart_confirmation_unsent_checks: Option<usize>,
     needs_reload: bool,
     content_refresh_rx: watch::Receiver<u64>,
+}
+
+pub enum ContentAction {
+    RestartRequested,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -48,9 +53,24 @@ impl MainContentView {
             tags: Vec::new(),
             new_check_draft: NewCheckDraft::default(),
             error_message: None,
+            restart_confirmation_unsent_checks: None,
             needs_reload: true,
             content_refresh_rx,
         }
+    }
+
+    pub fn set_error_message(&mut self, message: impl Into<String>) {
+        self.error_message = Some(message.into());
+    }
+
+    pub fn prepare_for_restart(&mut self) {
+        self.mode = ContentMode::General;
+        self.checks.clear();
+        self.tags.clear();
+        self.new_check_draft = NewCheckDraft::default();
+        self.error_message = None;
+        self.restart_confirmation_unsent_checks = None;
+        self.needs_reload = true;
     }
 
     fn sync_external_content_updates(&mut self) {
@@ -102,6 +122,25 @@ impl MainContentView {
         self.needs_reload = true;
         self.reload_checks_if_needed();
         Ok(())
+    }
+
+    fn handle_restart_click(&mut self) -> Option<ContentAction> {
+        match self.count_unsent_checks() {
+            Ok(0) => Some(ContentAction::RestartRequested),
+            Ok(unsent_checks) => {
+                self.restart_confirmation_unsent_checks = Some(unsent_checks);
+                None
+            }
+            Err(error) => {
+                self.error_message = Some(error);
+                None
+            }
+        }
+    }
+
+    fn count_unsent_checks(&self) -> Result<usize, String> {
+        let connection = database::establish_connection().map_err(|err| err.to_string())?;
+        database::checks::count_unsent(&connection).map_err(|err| err.to_string())
     }
 }
 

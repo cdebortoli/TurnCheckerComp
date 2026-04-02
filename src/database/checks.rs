@@ -87,6 +87,14 @@ pub fn fetch_unsent(connection: &Connection, limit: Option<usize>) -> Result<Vec
     }
 }
 
+pub fn count_unsent(connection: &Connection) -> Result<usize> {
+    let count: i64 =
+        connection.query_row("SELECT COUNT(*) FROM checks WHERE is_sent = 0", [], |row| {
+            row.get(0)
+        })?;
+    Ok(count as usize)
+}
+
 pub fn fetch_by_uuid(connection: &Connection, uuid: &uuid::Uuid) -> Result<Option<Check>> {
     let mut statement = connection.prepare(
         "SELECT id, uuid, name, detail, source, repeat_type, repeat_value, tag_uuid, position, is_mandatory, is_checked, is_sent
@@ -347,6 +355,22 @@ mod tests {
         assert_eq!(checks[0].source, CheckSourceType::GlobalGame);
         assert_eq!(checks[0].uuid, global_check.uuid);
         assert!(checks[0].is_sent);
+
+        Ok(())
+    }
+
+    #[test]
+    fn count_unsent_returns_only_unsent_checks() -> Result<()> {
+        let connection = establish_in_memory_connection()?;
+
+        let unsent = Check::new("Unsent");
+        super::insert(&connection, &unsent)?;
+
+        let mut sent = Check::new("Sent");
+        sent.is_sent = true;
+        super::insert(&connection, &sent)?;
+
+        assert_eq!(super::count_unsent(&connection)?, 1);
 
         Ok(())
     }

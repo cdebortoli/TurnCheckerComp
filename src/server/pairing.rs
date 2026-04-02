@@ -19,4 +19,8 @@ impl PairingState {
     pub fn is_paired(&self) -> bool {
         self.paired.load(Ordering::SeqCst)
     }
+
+    pub fn reset(&self) {
+        self.paired.store(false, Ordering::SeqCst);
+    }
 }

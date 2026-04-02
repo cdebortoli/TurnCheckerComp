@@ -83,6 +83,59 @@ impl TurnCheckerApp {
             ..Default::default()
         }
     }
+
+    fn show_title_bar(&self, ui: &mut egui::Ui, theme: &theme::Theme) {
+        ui.horizontal(|ui| {
+            ui.heading(RichText::new("Turn Checker Companion").color(theme.text_primary));
+
+            let button_size = egui::vec2(20.0, 20.0);
+            let available_width = ui.available_width().max(button_size.x);
+            ui.allocate_ui_with_layout(
+                egui::vec2(available_width, button_size.y),
+                egui::Layout::right_to_left(egui::Align::Center),
+                |ui| {
+                    if Self::show_theme_toggle_button(ui, theme).clicked() {
+                        let visuals = if ui.visuals().dark_mode {
+                            egui::Visuals::light()
+                        } else {
+                            egui::Visuals::dark()
+                        };
+                        ui.ctx().set_visuals(visuals);
+                        ui.ctx().request_repaint();
+                    }
+                },
+            );
+        });
+    }
+
+    fn show_theme_toggle_button(ui: &mut egui::Ui, theme: &theme::Theme) -> egui::Response {
+        let size = egui::vec2(20.0, 20.0);
+        let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click());
+
+        if ui.is_rect_visible(rect) {
+            let fill = if response.hovered() {
+                theme.bg_turn_card
+            } else {
+                theme.bg_secondary
+            };
+            let stroke = egui::Stroke::new(1.0, theme.text_muted);
+            let center = rect.center();
+            let button_radius = rect.width() * 0.5;
+
+            ui.painter().circle(center, button_radius, fill, stroke);
+
+            let moon_radius = rect.width() * 0.18;
+            let moon_color = theme.accent;
+            ui.painter().circle_filled(center, moon_radius, moon_color);
+            ui.painter().circle_filled(
+                center + egui::vec2(moon_radius * 0.95, -moon_radius * 0.3),
+                moon_radius,
+                fill,
+            );
+        }
+
+        response.on_hover_text("Toggle light/dark mode")
+    }
 }
 
 impl eframe::App for TurnCheckerApp {
@@ -104,7 +157,7 @@ impl eframe::App for TurnCheckerApp {
                     .inner_margin(theme.spacing_lg),
             )
             .show_inside(ui, |ui| {
-                ui.heading(RichText::new("Turn Checker Companion").color(theme.text_primary));
+                self.show_title_bar(ui, &theme);
 
                 if !self.startup.is_ready() {
                     self.startup.show_status(ui, &theme);

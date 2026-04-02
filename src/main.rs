@@ -19,6 +19,7 @@ fn main() -> anyhow::Result<()> {
         "Turn Checker Companion",
         native_options,
         Box::new(move |cc| {
+            egui_extras::install_image_loaders(&cc.egui_ctx);
             ui::TurnCheckerApp::configure_fonts(&cc.egui_ctx);
             Ok(Box::new(ui::TurnCheckerApp::new(
                 runtime,

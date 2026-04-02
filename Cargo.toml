@@ -11,7 +11,8 @@ path = "src/main.rs"
 [dependencies]
 eframe = "0.34.1"
 egui = "0.34.1"
-egui_extras = "0.34.1"
+egui_extras = { version = "0.34.1", features = ["image"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
 tokio = { version = "1", features = ["full"] }
 axum = "0.8.4"
 rusqlite = { version = "0.31", features = ["bundled"] }

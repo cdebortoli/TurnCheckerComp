@@ -79,13 +79,27 @@ impl TurnCheckerApp {
             viewport: egui::ViewportBuilder::default()
                 .with_inner_size([960.0, 640.0])
                 .with_min_inner_size([640.0, 480.0])
-                .with_title("Turn Checker Companion"),
+                .with_title("Turn Checker Companion")
+                .with_icon(Self::app_icon())
+                .with_titlebar_shown(false)
+                .with_title_shown(false),
             ..Default::default()
         }
     }
 
+    fn app_icon() -> egui::IconData {
+        eframe::icon_data::from_png_bytes(include_bytes!("../assets/icons/app_icon_ios_dark.png"))
+            .expect("embedded app icon should decode")
+    }
+
     fn show_title_bar(&self, ui: &mut egui::Ui, theme: &theme::Theme) {
         ui.horizontal(|ui| {
+            ui.add(
+                egui::Image::new(egui::include_image!(
+                    "../assets/icons/app_icon_ios_dark.png"
+                ))
+                .fit_to_exact_size(egui::vec2(24.0, 24.0)),
+            );
             ui.heading(RichText::new("Turn Checker Companion").color(theme.text_primary));
 
             let button_size = egui::vec2(20.0, 20.0);
@@ -158,6 +172,7 @@ impl eframe::App for TurnCheckerApp {
             )
             .show_inside(ui, |ui| {
                 self.show_title_bar(ui, &theme);
+                ui.add_space(theme.spacing_md);
 
                 if !self.startup.is_ready() {
                     self.startup.show_status(ui, &theme);

@@ -1,13 +1,35 @@
 use eframe::egui::{self, RichText};
 use qrcode::QrCode;
 
+use super::content::ContentAction;
 use super::theme::Theme;
+use super::TurnCheckerApp;
 use crate::server;
 
 pub struct PairingView {
     pairing_state: server::PairingState,
     server_connection: Option<server::ServerConnectionInfo>,
     qr_texture: Option<egui::TextureHandle>,
+}
+
+impl TurnCheckerApp {
+    pub(super) fn handle_content_action(&mut self, action: ContentAction) {
+        match action {
+            ContentAction::RestartRequested => self.restart_to_pairing(),
+        }
+    }
+
+    pub(super) fn restart_to_pairing(&mut self) {
+        match crate::database::reset_database() {
+            Ok(()) => {
+                self.pairing.pairing_state().reset();
+                self.content.prepare_for_restart();
+                let next_version = (*self._channels.content_refresh_tx.borrow()).wrapping_add(1);
+                let _ = self._channels.content_refresh_tx.send(next_version);
+            }
+            Err(error) => self.content.set_error_message(error.to_string()),
+        }
+    }
 }
 
 impl PairingView {

@@ -63,7 +63,7 @@ impl Theme {
             text_muted: Color32::from_rgb(99, 99, 102),
 
             // Accent / interactive
-            accent: Color32::from_rgb(10, 132, 255),
+            accent: Color32::from_rgb(222, 144, 48),
             accent_hover: Color32::from_rgb(64, 156, 255),
             destructive: Color32::from_rgb(255, 69, 58),
             success: Color32::from_rgb(48, 209, 88),

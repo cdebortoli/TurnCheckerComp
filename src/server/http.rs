@@ -279,9 +279,11 @@ mod tests {
             Uuid::new_v4()
         );
 
-        let response =
-            parse_json_request("/sync/push", axum::Json::<SyncPushRequest>::from_bytes(payload.as_bytes()))
-                .unwrap_err();
+        let response = parse_json_request(
+            "/sync/push",
+            axum::Json::<SyncPushRequest>::from_bytes(payload.as_bytes()),
+        )
+        .unwrap_err();
 
         assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 

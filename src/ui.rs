@@ -13,12 +13,22 @@ use self::content::MainContentView;
 use self::pairing::PairingView;
 use self::startup::StartupController;
 
+const CLASSIC_WINDOW_SIZE: [f32; 2] = [960.0, 640.0];
+const CLASSIC_MIN_WINDOW_SIZE: [f32; 2] = [640.0, 480.0];
+const MINIMAL_WINDOW_SIZE: [f32; 2] = [72.0, 72.0];
+const TITLE_BAR_BUTTON_SIZE: f32 = 20.0;
+const MINIMAL_MODE_BUTTON_SIZE: f32 = 28.0;
+const MINIMAL_MODE_ALPHA: u8 = 128;
+
 pub struct TurnCheckerApp {
     runtime: Runtime,
     _channels: UiChannels,
     startup: StartupController,
     pairing: PairingView,
     content: MainContentView,
+    minimal_mode: bool,
+    always_on_top: bool,
+    classic_window_size: egui::Vec2,
 }
 
 impl TurnCheckerApp {
@@ -71,14 +81,17 @@ impl TurnCheckerApp {
             startup: StartupController::new(channels.content_refresh_tx.clone()),
             pairing: PairingView::new(),
             content: MainContentView::new(channels.content_refresh_rx.clone()),
+            minimal_mode: false,
+            always_on_top: false,
+            classic_window_size: Self::classic_window_size(),
         }
     }
 
     pub fn native_options() -> eframe::NativeOptions {
         eframe::NativeOptions {
             viewport: egui::ViewportBuilder::default()
-                .with_inner_size([960.0, 640.0])
-                .with_min_inner_size([640.0, 480.0])
+                .with_inner_size(CLASSIC_WINDOW_SIZE)
+                .with_min_inner_size(CLASSIC_MIN_WINDOW_SIZE)
                 .with_title("Turn Checker Companion")
                 .with_icon(Self::app_icon())
                 .with_titlebar_shown(false)
@@ -92,8 +105,93 @@ impl TurnCheckerApp {
             .expect("embedded app icon should decode")
     }
 
-    fn show_title_bar(&self, ui: &mut egui::Ui, theme: &theme::Theme) {
-        ui.horizontal(|ui| {
+    fn classic_window_size() -> egui::Vec2 {
+        egui::vec2(CLASSIC_WINDOW_SIZE[0], CLASSIC_WINDOW_SIZE[1])
+    }
+
+    fn classic_min_window_size() -> egui::Vec2 {
+        egui::vec2(CLASSIC_MIN_WINDOW_SIZE[0], CLASSIC_MIN_WINDOW_SIZE[1])
+    }
+
+    fn minimal_window_size() -> egui::Vec2 {
+        egui::vec2(MINIMAL_WINDOW_SIZE[0], MINIMAL_WINDOW_SIZE[1])
+    }
+
+    fn alpha(color: egui::Color32, alpha: u8) -> egui::Color32 {
+        egui::Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), alpha)
+    }
+
+    fn sync_window_state(&mut self, ctx: &egui::Context) {
+        if self.minimal_mode {
+            return;
+        }
+
+        if let Some(size) = ctx.input(|i| i.viewport().inner_rect.map(|rect| rect.size())) {
+            let min_size = Self::classic_min_window_size();
+            if size.x >= min_size.x && size.y >= min_size.y {
+                self.classic_window_size = size;
+            }
+        }
+    }
+
+    fn set_minimal_mode(&mut self, ctx: &egui::Context, minimal_mode: bool) {
+        if self.minimal_mode == minimal_mode {
+            return;
+        }
+
+        if minimal_mode {
+            self.sync_window_state(ctx);
+            let minimal_size = Self::minimal_window_size();
+            ctx.send_viewport_cmd(egui::ViewportCommand::Transparent(true));
+            ctx.send_viewport_cmd(egui::ViewportCommand::Resizable(false));
+            ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(minimal_size));
+            ctx.send_viewport_cmd(egui::ViewportCommand::MaxInnerSize(minimal_size));
+            ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(minimal_size));
+        } else {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Transparent(false));
+            ctx.send_viewport_cmd(egui::ViewportCommand::Resizable(true));
+            ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(
+                Self::classic_min_window_size(),
+            ));
+            ctx.send_viewport_cmd(egui::ViewportCommand::MaxInnerSize(egui::Vec2::INFINITY));
+            ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(self.classic_window_size));
+        }
+
+        self.minimal_mode = minimal_mode;
+        ctx.request_repaint();
+    }
+
+    fn toggle_minimal_mode(&mut self, ctx: &egui::Context) {
+        self.set_minimal_mode(ctx, !self.minimal_mode);
+    }
+
+    fn apply_window_level(&self, ctx: &egui::Context) {
+        let level = if self.always_on_top {
+            egui::WindowLevel::AlwaysOnTop
+        } else {
+            egui::WindowLevel::Normal
+        };
+        ctx.send_viewport_cmd(egui::ViewportCommand::WindowLevel(level));
+    }
+
+    fn toggle_always_on_top(&mut self, ctx: &egui::Context) {
+        self.always_on_top = !self.always_on_top;
+        self.apply_window_level(ctx);
+        ctx.request_repaint();
+    }
+
+    fn toggle_theme(ctx: &egui::Context, dark_mode: bool) {
+        let visuals = if dark_mode {
+            egui::Visuals::light()
+        } else {
+            egui::Visuals::dark()
+        };
+        ctx.set_visuals(visuals);
+        ctx.request_repaint();
+    }
+
+    fn show_title_bar(&mut self, ui: &mut egui::Ui, theme: &theme::Theme) {
+        let title_bar = ui.horizontal(|ui| {
             ui.add(
                 egui::Image::new(egui::include_image!(
                     "../assets/icons/app_icon_ios_dark.png"
@@ -109,53 +207,241 @@ impl TurnCheckerApp {
                 egui::Layout::right_to_left(egui::Align::Center),
                 |ui| {
                     if Self::show_theme_toggle_button(ui, theme).clicked() {
-                        let visuals = if ui.visuals().dark_mode {
-                            egui::Visuals::light()
-                        } else {
-                            egui::Visuals::dark()
-                        };
-                        ui.ctx().set_visuals(visuals);
-                        ui.ctx().request_repaint();
+                        Self::toggle_theme(ui.ctx(), ui.visuals().dark_mode);
+                    }
+
+                    ui.add_space(theme.spacing_sm);
+
+                    if Self::show_always_on_top_button(ui, theme, self.always_on_top).clicked() {
+                        self.toggle_always_on_top(ui.ctx());
+                    }
+
+                    ui.add_space(theme.spacing_sm);
+
+                    if Self::show_minimal_mode_button(ui, theme, self.minimal_mode).clicked() {
+                        self.toggle_minimal_mode(ui.ctx());
                     }
                 },
             );
         });
+
+        if title_bar.response.drag_started() {
+            ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
+        }
     }
 
-    fn show_theme_toggle_button(ui: &mut egui::Ui, theme: &theme::Theme) -> egui::Response {
-        let size = egui::vec2(20.0, 20.0);
+    fn show_round_icon_button(
+        ui: &mut egui::Ui,
+        theme: &theme::Theme,
+        size: egui::Vec2,
+        active: bool,
+        draw_icon: impl FnOnce(&egui::Painter, egui::Rect, egui::Color32, egui::Color32),
+    ) -> egui::Response {
         let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click());
 
         if ui.is_rect_visible(rect) {
-            let fill = if response.hovered() {
+            let fill = if active || response.hovered() {
                 theme.bg_turn_card
             } else {
                 theme.bg_secondary
             };
-            let stroke = egui::Stroke::new(1.0, theme.text_muted);
+            let stroke = egui::Stroke::new(
+                1.0,
+                if active {
+                    theme.accent
+                } else {
+                    theme.text_muted
+                },
+            );
             let center = rect.center();
             let button_radius = rect.width() * 0.5;
 
             ui.painter().circle(center, button_radius, fill, stroke);
-
-            let moon_radius = rect.width() * 0.18;
-            let moon_color = theme.accent;
-            ui.painter().circle_filled(center, moon_radius, moon_color);
-            ui.painter().circle_filled(
-                center + egui::vec2(moon_radius * 0.95, -moon_radius * 0.3),
-                moon_radius,
-                fill,
-            );
+            let icon_color = if active {
+                theme.accent
+            } else {
+                theme.text_primary
+            };
+            draw_icon(ui.painter(), rect, fill, icon_color);
         }
 
-        response.on_hover_text("Toggle light/dark mode")
+        response
+    }
+
+    fn show_theme_toggle_button(ui: &mut egui::Ui, theme: &theme::Theme) -> egui::Response {
+        Self::show_round_icon_button(
+            ui,
+            theme,
+            egui::vec2(TITLE_BAR_BUTTON_SIZE, TITLE_BAR_BUTTON_SIZE),
+            false,
+            |painter, rect, fill, _icon_color| {
+                let center = rect.center();
+                let moon_radius = rect.width() * 0.18;
+                painter.circle_filled(center, moon_radius, theme.accent);
+                painter.circle_filled(
+                    center + egui::vec2(moon_radius * 0.95, -moon_radius * 0.3),
+                    moon_radius,
+                    fill,
+                );
+            },
+        )
+        .on_hover_text("Toggle light/dark mode")
+    }
+
+    fn show_always_on_top_button(
+        ui: &mut egui::Ui,
+        theme: &theme::Theme,
+        active: bool,
+    ) -> egui::Response {
+        Self::show_round_icon_button(
+            ui,
+            theme,
+            egui::vec2(TITLE_BAR_BUTTON_SIZE, TITLE_BAR_BUTTON_SIZE),
+            active,
+            |painter, rect, _fill, icon_color| {
+                let stem_top = rect.center() + egui::vec2(0.0, -rect.height() * 0.18);
+                let stem_bottom = rect.center() + egui::vec2(0.0, rect.height() * 0.18);
+                let stroke = egui::Stroke::new(1.4, icon_color);
+
+                painter.line_segment([stem_top, stem_bottom], stroke);
+                painter.line_segment(
+                    [
+                        stem_bottom,
+                        stem_bottom + egui::vec2(0.0, rect.height() * 0.14),
+                    ],
+                    stroke,
+                );
+                painter.line_segment(
+                    [
+                        rect.center() + egui::vec2(-rect.width() * 0.18, -rect.height() * 0.02),
+                        rect.center() + egui::vec2(rect.width() * 0.18, -rect.height() * 0.02),
+                    ],
+                    stroke,
+                );
+                painter.line_segment(
+                    [
+                        rect.center() + egui::vec2(-rect.width() * 0.18, -rect.height() * 0.02),
+                        rect.center() + egui::vec2(0.0, -rect.height() * 0.26),
+                    ],
+                    stroke,
+                );
+                painter.line_segment(
+                    [
+                        rect.center() + egui::vec2(rect.width() * 0.18, -rect.height() * 0.02),
+                        rect.center() + egui::vec2(0.0, -rect.height() * 0.26),
+                    ],
+                    stroke,
+                );
+            },
+        )
+        .on_hover_text(if active {
+            "Disable always-on-top"
+        } else {
+            "Keep the app above other windows"
+        })
+    }
+
+    fn show_minimal_mode_button(
+        ui: &mut egui::Ui,
+        theme: &theme::Theme,
+        minimal_mode: bool,
+    ) -> egui::Response {
+        let size = if minimal_mode {
+            egui::vec2(MINIMAL_MODE_BUTTON_SIZE, MINIMAL_MODE_BUTTON_SIZE)
+        } else {
+            egui::vec2(TITLE_BAR_BUTTON_SIZE, TITLE_BAR_BUTTON_SIZE)
+        };
+
+        Self::show_round_icon_button(
+            ui,
+            theme,
+            size,
+            minimal_mode,
+            |painter, rect, _fill, icon_color| {
+                let stroke = egui::Stroke::new(1.4, icon_color);
+                let inset = if minimal_mode {
+                    rect.width() * 0.23
+                } else {
+                    rect.width() * 0.32
+                };
+                let icon_rect = rect.shrink(inset);
+
+                painter.rect_stroke(icon_rect, 2.0, stroke, egui::StrokeKind::Inside);
+
+                if !minimal_mode {
+                    let inner = icon_rect.shrink(rect.width() * 0.12);
+                    painter.rect_stroke(
+                        inner,
+                        2.0,
+                        egui::Stroke::new(1.0, icon_color),
+                        egui::StrokeKind::Inside,
+                    );
+                }
+            },
+        )
+        .on_hover_text(if minimal_mode {
+            "Return to the full view"
+        } else {
+            "Switch to a compact overlay"
+        })
+    }
+
+    fn show_minimal_view(&mut self, ui: &mut egui::Ui, theme: &theme::Theme) {
+        let drag_response = ui.interact(
+            ui.max_rect(),
+            ui.id().with("minimal_drag_area"),
+            egui::Sense::click_and_drag(),
+        );
+        if drag_response.drag_started() {
+            ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
+        }
+
+        ui.with_layout(
+            egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
+            |ui| {
+                if Self::show_minimal_mode_button(ui, theme, self.minimal_mode).clicked() {
+                    self.toggle_minimal_mode(ui.ctx());
+                }
+            },
+        );
+    }
+
+    fn panel_fill_color(&self, theme: &theme::Theme) -> egui::Color32 {
+        if self.minimal_mode {
+            Self::alpha(theme.bg_primary, MINIMAL_MODE_ALPHA)
+        } else {
+            theme.bg_primary
+        }
+    }
+
+    fn panel_margin(&self, theme: &theme::Theme) -> i8 {
+        if self.minimal_mode {
+            8
+        } else {
+            theme.spacing_lg as i8
+        }
+    }
+
+    fn clear_color_for_visuals(&self, visuals: &egui::Visuals) -> [f32; 4] {
+        let theme = theme::Theme::from_visuals(visuals);
+        let color = if self.minimal_mode {
+            Self::alpha(theme.bg_primary, MINIMAL_MODE_ALPHA)
+        } else {
+            theme.bg_primary
+        };
+        color.to_normalized_gamma_f32()
     }
 }
 
 impl eframe::App for TurnCheckerApp {
+    fn clear_color(&self, visuals: &egui::Visuals) -> [f32; 4] {
+        self.clear_color_for_visuals(visuals)
+    }
+
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         // Get theme once at the start
         let theme = theme::Theme::from_visuals(ui.visuals());
+        self.sync_window_state(ui.ctx());
 
         // Check if ready and so that the server must be running
         self.startup
@@ -167,33 +453,38 @@ impl eframe::App for TurnCheckerApp {
         egui::CentralPanel::default()
             .frame(
                 egui::Frame::new()
-                    .fill(theme.bg_primary)
-                    .inner_margin(theme.spacing_lg),
+                    .fill(self.panel_fill_color(&theme))
+                    .inner_margin(self.panel_margin(&theme)),
             )
             .show_inside(ui, |ui| {
-                self.show_title_bar(ui, &theme);
-                ui.add_space(theme.spacing_md);
-
-                if !self.startup.is_ready() {
-                    self.startup.show_status(ui, &theme);
-                } else if self.pairing.is_paired() {
-                    if let Some(action) = self.content.show(ui) {
-                        self.handle_content_action(action);
-                    }
-                } else if self.startup.server_started() {
-                    self.pairing.show_waiting(ui);
+                if self.minimal_mode {
+                    self.show_minimal_view(ui, &theme);
                 } else {
-                    ui.label(
-                        RichText::new("Starting the local sync server...").color(theme.text_muted),
+                    self.show_title_bar(ui, &theme);
+                    ui.add_space(theme.spacing_md);
+
+                    if !self.startup.is_ready() {
+                        self.startup.show_status(ui, &theme);
+                    } else if self.pairing.is_paired() {
+                        if let Some(action) = self.content.show(ui) {
+                            self.handle_content_action(action);
+                        }
+                    } else if self.startup.server_started() {
+                        self.pairing.show_waiting(ui);
+                    } else {
+                        ui.label(
+                            RichText::new("Starting the local sync server...")
+                                .color(theme.text_muted),
+                        );
+                    }
+
+                    self.startup.show_restore_modal(
+                        ui,
+                        &mut self.runtime,
+                        self.pairing.pairing_state(),
+                        &theme,
                     );
                 }
-
-                self.startup.show_restore_modal(
-                    ui,
-                    &mut self.runtime,
-                    self.pairing.pairing_state(),
-                    &theme,
-                );
             });
     }
 }

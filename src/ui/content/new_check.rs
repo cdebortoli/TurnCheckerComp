@@ -206,10 +206,15 @@ fn labeled_text_edit(
         ui.add(
             egui::TextEdit::multiline(value)
                 .desired_rows(3)
+                .background_color(theme.bg_list_element)
                 .desired_width(width.unwrap_or(f32::INFINITY)),
         );
     } else {
-        ui.add(egui::TextEdit::singleline(value).desired_width(width.unwrap_or(f32::INFINITY)));
+        ui.add(
+            egui::TextEdit::singleline(value)
+                .background_color(theme.bg_list_element)
+                .desired_width(width.unwrap_or(f32::INFINITY)),
+        );
     }
     ui.add_space(theme.spacing_md);
 }

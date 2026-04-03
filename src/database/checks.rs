@@ -337,8 +337,8 @@ mod tests {
         game_check.source = CheckSourceType::Game;
         super::insert(&connection, &game_check)?;
 
-        let mut fetched_global = super::fetch_by_uuid(&connection, &global_check.uuid)?
-            .expect("global check exists");
+        let mut fetched_global =
+            super::fetch_by_uuid(&connection, &global_check.uuid)?.expect("global check exists");
         fetched_global.position = 99;
         fetched_global.is_sent = true;
 

@@ -19,8 +19,8 @@ pub fn insert(connection: &Connection, tag: &Tag) -> Result<i64> {
 }
 
 pub fn fetch_all(connection: &Connection) -> Result<Vec<Tag>> {
-    let mut statement =
-        connection.prepare("SELECT id, uuid, name, color, text_color, is_sent FROM tags ORDER BY name")?;
+    let mut statement = connection
+        .prepare("SELECT id, uuid, name, color, text_color, is_sent FROM tags ORDER BY name")?;
     let rows = statement.query_map([], row_to_tag)?;
 
     let tags = rows.collect::<rusqlite::Result<Vec<_>>>()?;
@@ -54,8 +54,8 @@ pub fn fetch_unsent(connection: &Connection, limit: Option<usize>) -> Result<Vec
 }
 
 pub fn fetch_by_uuid(connection: &Connection, uuid: &uuid::Uuid) -> Result<Option<Tag>> {
-    let mut statement =
-        connection.prepare("SELECT id, uuid, name, color, text_color, is_sent FROM tags WHERE uuid = ?1")?;
+    let mut statement = connection
+        .prepare("SELECT id, uuid, name, color, text_color, is_sent FROM tags WHERE uuid = ?1")?;
 
     let tag = statement
         .query_row([uuid.to_string()], row_to_tag)
@@ -129,7 +129,11 @@ fn parse_uuid(value: String) -> uuid::Uuid {
 }
 
 fn bool_to_sqlite(value: bool) -> i64 {
-    if value { 1 } else { 0 }
+    if value {
+        1
+    } else {
+        0
+    }
 }
 
 fn sqlite_to_bool(value: i64) -> bool {

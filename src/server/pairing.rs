@@ -1,6 +1,6 @@
 // This file contains the in-memory pairing state shared by the UI and HTTP server.
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Default)]
 pub struct PairingState {

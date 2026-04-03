@@ -40,7 +40,10 @@ mod tests {
             CheckRepeatType::Conditional(3).to_storage(),
             ("conditional", Some(3))
         );
-        assert_eq!(CheckRepeatType::Specific(7).to_storage(), ("specific", Some(7)));
+        assert_eq!(
+            CheckRepeatType::Specific(7).to_storage(),
+            ("specific", Some(7))
+        );
         assert_eq!(CheckRepeatType::Until(4).to_storage(), ("until", Some(4)));
     }
 

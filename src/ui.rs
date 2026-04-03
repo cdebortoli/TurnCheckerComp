@@ -18,7 +18,7 @@ const CLASSIC_MIN_WINDOW_SIZE: [f32; 2] = [640.0, 480.0];
 const MINIMAL_WINDOW_SIZE: [f32; 2] = [72.0, 72.0];
 const TITLE_BAR_BUTTON_SIZE: f32 = 20.0;
 const MINIMAL_MODE_BUTTON_SIZE: f32 = 28.0;
-const MINIMAL_MODE_ALPHA: u8 = 128;
+const MINIMAL_MODE_BUTTON_BG_ALPHA: u8 = 196;
 
 pub struct TurnCheckerApp {
     runtime: Runtime,
@@ -29,6 +29,8 @@ pub struct TurnCheckerApp {
     minimal_mode: bool,
     always_on_top: bool,
     classic_window_size: egui::Vec2,
+    classic_window_position: Option<egui::Pos2>,
+    minimal_window_position: Option<egui::Pos2>,
 }
 
 impl TurnCheckerApp {
@@ -84,6 +86,8 @@ impl TurnCheckerApp {
             minimal_mode: false,
             always_on_top: false,
             classic_window_size: Self::classic_window_size(),
+            classic_window_position: None,
+            minimal_window_position: None,
         }
     }
 
@@ -94,8 +98,10 @@ impl TurnCheckerApp {
                 .with_min_inner_size(CLASSIC_MIN_WINDOW_SIZE)
                 .with_title("Turn Checker Companion")
                 .with_icon(Self::app_icon())
-                .with_titlebar_shown(false)
-                .with_title_shown(false),
+                .with_decorations(true)
+                .with_transparent(true)
+                .with_titlebar_shown(true)
+                .with_title_shown(true),
             ..Default::default()
         }
     }
@@ -117,11 +123,19 @@ impl TurnCheckerApp {
         egui::vec2(MINIMAL_WINDOW_SIZE[0], MINIMAL_WINDOW_SIZE[1])
     }
 
-    fn alpha(color: egui::Color32, alpha: u8) -> egui::Color32 {
+    fn with_alpha(color: egui::Color32, alpha: u8) -> egui::Color32 {
         egui::Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), alpha)
     }
 
     fn sync_window_state(&mut self, ctx: &egui::Context) {
+        if let Some(position) = ctx.input(|i| i.viewport().outer_rect.map(|rect| rect.min)) {
+            if self.minimal_mode {
+                self.minimal_window_position = Some(position);
+            } else {
+                self.classic_window_position = Some(position);
+            }
+        }
+
         if self.minimal_mode {
             return;
         }
@@ -134,27 +148,37 @@ impl TurnCheckerApp {
         }
     }
 
+    fn restore_window_position(&self, ctx: &egui::Context, position: Option<egui::Pos2>) {
+        if let Some(position) = position {
+            ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(position));
+        }
+    }
+
     fn set_minimal_mode(&mut self, ctx: &egui::Context, minimal_mode: bool) {
         if self.minimal_mode == minimal_mode {
             return;
         }
 
+        self.sync_window_state(ctx);
+
         if minimal_mode {
             self.sync_window_state(ctx);
             let minimal_size = Self::minimal_window_size();
-            ctx.send_viewport_cmd(egui::ViewportCommand::Transparent(true));
+            ctx.send_viewport_cmd(egui::ViewportCommand::Decorations(false));
             ctx.send_viewport_cmd(egui::ViewportCommand::Resizable(false));
             ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(minimal_size));
             ctx.send_viewport_cmd(egui::ViewportCommand::MaxInnerSize(minimal_size));
             ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(minimal_size));
+            self.restore_window_position(ctx, self.minimal_window_position);
         } else {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Transparent(false));
+            ctx.send_viewport_cmd(egui::ViewportCommand::Decorations(true));
             ctx.send_viewport_cmd(egui::ViewportCommand::Resizable(true));
             ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(
                 Self::classic_min_window_size(),
             ));
             ctx.send_viewport_cmd(egui::ViewportCommand::MaxInnerSize(egui::Vec2::INFINITY));
             ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(self.classic_window_size));
+            self.restore_window_position(ctx, self.classic_window_position);
         }
 
         self.minimal_mode = minimal_mode;
@@ -235,12 +259,15 @@ impl TurnCheckerApp {
         theme: &theme::Theme,
         size: egui::Vec2,
         active: bool,
+        fill_override: Option<egui::Color32>,
         draw_icon: impl FnOnce(&egui::Painter, egui::Rect, egui::Color32, egui::Color32),
     ) -> egui::Response {
         let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click());
 
         if ui.is_rect_visible(rect) {
-            let fill = if active || response.hovered() {
+            let fill = if let Some(fill) = fill_override {
+                fill
+            } else if active || response.hovered() {
                 theme.bg_turn_card
             } else {
                 theme.bg_secondary
@@ -274,6 +301,7 @@ impl TurnCheckerApp {
             theme,
             egui::vec2(TITLE_BAR_BUTTON_SIZE, TITLE_BAR_BUTTON_SIZE),
             false,
+            None,
             |painter, rect, fill, _icon_color| {
                 let center = rect.center();
                 let moon_radius = rect.width() * 0.18;
@@ -298,6 +326,7 @@ impl TurnCheckerApp {
             theme,
             egui::vec2(TITLE_BAR_BUTTON_SIZE, TITLE_BAR_BUTTON_SIZE),
             active,
+            None,
             |painter, rect, _fill, icon_color| {
                 let stem_top = rect.center() + egui::vec2(0.0, -rect.height() * 0.18);
                 let stem_bottom = rect.center() + egui::vec2(0.0, rect.height() * 0.18);
@@ -351,12 +380,15 @@ impl TurnCheckerApp {
         } else {
             egui::vec2(TITLE_BAR_BUTTON_SIZE, TITLE_BAR_BUTTON_SIZE)
         };
+        let fill_override = minimal_mode
+            .then(|| Self::with_alpha(theme.bg_turn_card, MINIMAL_MODE_BUTTON_BG_ALPHA));
 
         Self::show_round_icon_button(
             ui,
             theme,
             size,
             minimal_mode,
+            fill_override,
             |painter, rect, _fill, icon_color| {
                 let stroke = egui::Stroke::new(1.4, icon_color);
                 let inset = if minimal_mode {
@@ -408,7 +440,7 @@ impl TurnCheckerApp {
 
     fn panel_fill_color(&self, theme: &theme::Theme) -> egui::Color32 {
         if self.minimal_mode {
-            Self::alpha(theme.bg_primary, MINIMAL_MODE_ALPHA)
+            egui::Color32::TRANSPARENT
         } else {
             theme.bg_primary
         }
@@ -416,26 +448,16 @@ impl TurnCheckerApp {
 
     fn panel_margin(&self, theme: &theme::Theme) -> i8 {
         if self.minimal_mode {
-            8
+            0
         } else {
             theme.spacing_lg as i8
         }
     }
-
-    fn clear_color_for_visuals(&self, visuals: &egui::Visuals) -> [f32; 4] {
-        let theme = theme::Theme::from_visuals(visuals);
-        let color = if self.minimal_mode {
-            Self::alpha(theme.bg_primary, MINIMAL_MODE_ALPHA)
-        } else {
-            theme.bg_primary
-        };
-        color.to_normalized_gamma_f32()
-    }
 }
 
 impl eframe::App for TurnCheckerApp {
-    fn clear_color(&self, visuals: &egui::Visuals) -> [f32; 4] {
-        self.clear_color_for_visuals(visuals)
+    fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
+        [0.0, 0.0, 0.0, 0.0]
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {

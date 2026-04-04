@@ -63,6 +63,19 @@ pub fn fetch_all(connection: &Connection) -> Result<Vec<Check>> {
     Ok(checks)
 }
 
+pub fn fetch_by_source(connection: &Connection, source: CheckSourceType) -> Result<Vec<Check>> {
+    let mut statement = connection.prepare(
+        "SELECT id, uuid, name, detail, source, repeat_type, repeat_value, tag_uuid, position, is_mandatory, is_checked, is_sent
+         FROM checks
+         WHERE source = ?1
+         ORDER BY position, name",
+    )?;
+    let rows = statement.query_map([source.to_storage()], row_to_check)?;
+
+    let checks = rows.collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok(checks)
+}
+
 pub fn fetch_unsent(connection: &Connection, limit: Option<usize>) -> Result<Vec<Check>> {
     match limit {
         Some(limit) => {
@@ -358,6 +371,32 @@ mod tests {
         assert_eq!(checks[0].source, CheckSourceType::GlobalGame);
         assert_eq!(checks[0].uuid, global_check.uuid);
         assert!(checks[0].is_sent);
+
+        Ok(())
+    }
+
+    #[test]
+    fn fetch_by_source_returns_only_requested_source() -> Result<()> {
+        let connection = establish_in_memory_connection()?;
+
+        let mut game_check = Check::new("Game check");
+        game_check.source = CheckSourceType::Game;
+
+        let mut global_game_check = Check::new("Global game check");
+        global_game_check.source = CheckSourceType::GlobalGame;
+
+        let mut template_check = Check::new("Template check");
+        template_check.source = CheckSourceType::Blueprint;
+
+        super::insert(&connection, &game_check)?;
+        super::insert(&connection, &global_game_check)?;
+        super::insert(&connection, &template_check)?;
+
+        let checks = super::fetch_by_source(&connection, CheckSourceType::Game)?;
+
+        assert_eq!(checks.len(), 1);
+        assert_eq!(checks[0].source, CheckSourceType::Game);
+        assert_eq!(checks[0].name, "Game check");
 
         Ok(())
     }

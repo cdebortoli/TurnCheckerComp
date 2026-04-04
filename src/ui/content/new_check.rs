@@ -87,12 +87,7 @@ impl NewCheckView {
         ui.add_space(theme.spacing_md);
     }
 
-    fn show_new_check_tag_selector(
-        &mut self,
-        ui: &mut egui::Ui,
-        theme: &Theme,
-        tags: &[Tag],
-    ) {
+    fn show_new_check_tag_selector(&mut self, ui: &mut egui::Ui, theme: &Theme, tags: &[Tag]) {
         ui.label(RichText::new("Tag").color(theme.text_secondary));
 
         let selected_label = find_tag_by_uuid(tags, self.draft.selected_tag_uuid)

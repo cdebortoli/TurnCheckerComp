@@ -1,11 +1,13 @@
+mod check_cards;
 mod checklist;
 mod comments;
 mod new_check;
 mod new_check_draft;
+mod source_checks;
 mod toggle_button;
 
 use crate::database;
-use crate::models::{Check, Tag};
+use crate::models::{check_source_type::CheckSourceType, Check, Tag};
 use crate::ui::theme::Theme;
 use eframe::egui::{self, RichText};
 use tokio::sync::watch;
@@ -14,14 +16,18 @@ use uuid::Uuid;
 use self::checklist::{ChecklistAction, ChecklistView};
 use self::comments::CommentsView;
 use self::new_check::{NewCheckAction, NewCheckView};
+use self::source_checks::SourceChecksView;
 
 pub struct MainContentView {
     mode: ContentMode,
     checks: Vec<Check>,
+    source_checks: Vec<Check>,
     tags: Vec<Tag>,
     checklist_view: ChecklistView,
     comments_view: CommentsView,
     new_check_view: NewCheckView,
+    source_checks_view: SourceChecksView,
+    source_checks_config: Option<SourceChecksConfig>,
     error_message: Option<String>,
     restart_confirmation_unsent_checks: Option<usize>,
     needs_reload: bool,
@@ -36,7 +42,14 @@ pub enum ContentAction {
 enum ContentMode {
     General,
     NewCheck,
+    SourceChecks,
     Comments,
+}
+
+#[derive(Clone)]
+struct SourceChecksConfig {
+    title: &'static str,
+    source: CheckSourceType,
 }
 
 impl MainContentView {
@@ -44,10 +57,13 @@ impl MainContentView {
         Self {
             mode: ContentMode::General,
             checks: Vec::new(),
+            source_checks: Vec::new(),
             tags: Vec::new(),
             checklist_view: ChecklistView::default(),
             comments_view: CommentsView::default(),
             new_check_view: NewCheckView::default(),
+            source_checks_view: SourceChecksView::default(),
+            source_checks_config: None,
             error_message: None,
             restart_confirmation_unsent_checks: None,
             needs_reload: true,
@@ -62,10 +78,13 @@ impl MainContentView {
     pub fn prepare_for_restart(&mut self) {
         self.mode = ContentMode::General;
         self.checks.clear();
+        self.source_checks.clear();
         self.tags.clear();
         self.checklist_view = ChecklistView::default();
         self.comments_view = CommentsView::default();
         self.new_check_view.reset();
+        self.source_checks_view = SourceChecksView::default();
+        self.source_checks_config = None;
         self.error_message = None;
         self.restart_confirmation_unsent_checks = None;
         self.needs_reload = true;
@@ -86,10 +105,19 @@ impl MainContentView {
             return;
         }
 
-        match Self::load_content() {
-            Ok((checks, tags)) => {
+        let source_filter = match self.mode {
+            ContentMode::SourceChecks => self
+                .source_checks_config
+                .as_ref()
+                .map(|config| config.source.clone()),
+            _ => None,
+        };
+
+        match Self::load_content(source_filter) {
+            Ok((checks, tags, source_checks)) => {
                 self.checks = checks;
                 self.tags = tags;
+                self.source_checks = source_checks;
                 self.error_message = None;
             }
             Err(error) => self.error_message = Some(error),
@@ -97,11 +125,18 @@ impl MainContentView {
         self.needs_reload = false;
     }
 
-    fn load_content() -> Result<(Vec<Check>, Vec<Tag>), String> {
+    fn load_content(
+        source_filter: Option<CheckSourceType>,
+    ) -> Result<(Vec<Check>, Vec<Tag>, Vec<Check>), String> {
         let connection = database::establish_connection().map_err(|err| err.to_string())?;
         let checks = database::checks::fetch_all(&connection).map_err(|err| err.to_string())?;
         let tags = database::tags::fetch_all(&connection).map_err(|err| err.to_string())?;
-        Ok((checks, tags))
+        let source_checks = match source_filter {
+            Some(source) => database::checks::fetch_by_source(&connection, source)
+                .map_err(|err| err.to_string())?,
+            None => Vec::new(),
+        };
+        Ok((checks, tags, source_checks))
     }
 
     fn update_check_status(&mut self, mut check: Check, is_checked: bool) -> Result<(), String> {
@@ -184,6 +219,24 @@ impl MainContentView {
                 }
             } else {
                 self.show_mode_button(ui, theme, "New Check", ContentMode::NewCheck);
+                self.show_source_checks_button(
+                    ui,
+                    theme,
+                    "Game's turns checks",
+                    CheckSourceType::Game,
+                );
+                self.show_source_checks_button(
+                    ui,
+                    theme,
+                    "Game's checks",
+                    CheckSourceType::GlobalGame,
+                );
+                self.show_source_checks_button(
+                    ui,
+                    theme,
+                    "Template's checks",
+                    CheckSourceType::Blueprint,
+                );
                 self.show_mode_button(ui, theme, "Comments", ContentMode::Comments);
                 self.show_restart_button(ui, theme, action);
             }
@@ -208,6 +261,37 @@ impl MainContentView {
         if ui.add(button).clicked() {
             self.mode = target_mode;
             self.error_message = None;
+        }
+    }
+
+    fn show_source_checks_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        label: &'static str,
+        source: CheckSourceType,
+    ) {
+        let is_active = self.mode == ContentMode::SourceChecks
+            && self
+                .source_checks_config
+                .as_ref()
+                .is_some_and(|config| config.title == label && config.source == source);
+        let button = egui::Button::new(RichText::new(label).color(theme.text_primary))
+            .fill(if is_active {
+                theme.accent
+            } else {
+                theme.bg_secondary
+            })
+            .corner_radius(theme.corner_radius);
+
+        if ui.add(button).clicked() {
+            self.mode = ContentMode::SourceChecks;
+            self.source_checks_config = Some(SourceChecksConfig {
+                title: label,
+                source,
+            });
+            self.error_message = None;
+            self.needs_reload = true;
         }
     }
 
@@ -290,6 +374,17 @@ impl MainContentView {
                 let action = self.new_check_view.show(ui, theme, &self.tags);
                 if let Some(action) = action {
                     self.handle_new_check_action(action);
+                }
+            }
+            ContentMode::SourceChecks => {
+                if let Some(config) = self.source_checks_config.as_ref() {
+                    self.source_checks_view.show(
+                        ui,
+                        theme,
+                        config.title,
+                        &self.source_checks,
+                        &self.tags,
+                    );
                 }
             }
             ContentMode::Comments => {
@@ -406,5 +501,4 @@ mod tests {
         assert!(updated.is_checked);
         assert!(!updated.is_sent);
     }
-
 }

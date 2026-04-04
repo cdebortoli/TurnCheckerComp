@@ -49,7 +49,7 @@ impl ChecklistView {
     }
 
     fn show_checklist_header(&self, ui: &mut egui::Ui, theme: &Theme) {
-        ui.label(RichText::new("All checks").color(theme.text_secondary));
+        ui.label(RichText::new("Current turn").color(theme.text_secondary));
         ui.add_space(theme.spacing_md);
     }
 

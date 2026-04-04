@@ -42,11 +42,13 @@ pub fn insert(connection: &Connection, check: &Check) -> Result<i64> {
 }
 
 pub fn fetch_all(connection: &Connection) -> Result<Vec<Check>> {
-    let source = CheckSourceType::GlobalGame.to_storage();
+    let global_game_source = CheckSourceType::GlobalGame.to_storage();
+    let turn_source = CheckSourceType::Turn.to_storage();
 
     let mut statement = connection.prepare(
       "SELECT id, uuid, name, detail, source, repeat_type, repeat_value, tag_uuid, position, is_mandatory, is_checked, is_sent
       FROM checks
+      WHERE source IN (?1, ?2)
       ORDER BY
         CASE
           WHEN source = ?1 THEN 0
@@ -55,7 +57,7 @@ pub fn fetch_all(connection: &Connection) -> Result<Vec<Check>> {
         position,
         name",
     )?;
-    let rows = statement.query_map([source], row_to_check)?;
+    let rows = statement.query_map([global_game_source, turn_source], row_to_check)?;
 
     let checks = rows.collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(checks)
@@ -284,7 +286,7 @@ mod tests {
     }
 
     #[test]
-    fn fetch_all_prioritizes_global_game_checks() -> Result<()> {
+    fn fetch_all_returns_only_global_game_and_turn_checks() -> Result<()> {
         let connection = establish_in_memory_connection()?;
 
         let mut global_check = Check::new("Global check");
@@ -293,7 +295,8 @@ mod tests {
         let mut game_check = Check::new("Game check");
         game_check.source = CheckSourceType::Game;
 
-        let turn_check = Check::new("Turn check");
+        let mut turn_check = Check::new("Turn check");
+        turn_check.source = CheckSourceType::Turn;
 
         super::insert(&connection, &global_check)?;
         super::insert(&connection, &game_check)?;
@@ -316,11 +319,11 @@ mod tests {
 
         let checks = super::fetch_all(&connection)?;
 
-        assert_eq!(checks.len(), 3);
+        assert_eq!(checks.len(), 2);
         assert_eq!(checks[0].source, CheckSourceType::GlobalGame);
         assert_eq!(checks[0].name, "Global check");
+        assert_eq!(checks[1].source, CheckSourceType::Turn);
         assert_eq!(checks[1].name, "Turn check");
-        assert_eq!(checks[2].name, "Game check");
 
         Ok(())
     }
@@ -351,7 +354,7 @@ mod tests {
 
         let checks = super::fetch_all(&connection)?;
 
-        assert_eq!(checks.len(), 2);
+        assert_eq!(checks.len(), 1);
         assert_eq!(checks[0].source, CheckSourceType::GlobalGame);
         assert_eq!(checks[0].uuid, global_check.uuid);
         assert!(checks[0].is_sent);

@@ -6,7 +6,7 @@ use rusqlite::Connection;
 
 use crate::database::checks;
 use crate::database::tags;
-use crate::models::{Check, Tag};
+use crate::models::{check_source_type::CheckSourceType, Check, Tag};
 
 const INSERT_DEBUG_UNSENT_CHECK_ON_CREATE: bool = false;
 const INSERT_DEBUG_TAGS_ON_START: bool = false;
@@ -184,6 +184,7 @@ fn insert_debug_tags(connection: &Connection) -> Result<()> {
 fn insert_debug_unsent_check(connection: &Connection) -> Result<()> {
     let mut check = Check::new("Debug unsent check");
     check.detail = Some("Inserted automatically for startup debug flows.".to_string());
+    check.source = CheckSourceType::Turn;
     check.is_sent = false;
     checks::insert(connection, &check)?;
     Ok(())

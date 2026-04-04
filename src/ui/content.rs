@@ -406,4 +406,5 @@ mod tests {
         assert!(updated.is_checked);
         assert!(!updated.is_sent);
     }
+
 }

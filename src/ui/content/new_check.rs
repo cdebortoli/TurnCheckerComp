@@ -1,20 +1,37 @@
 use eframe::egui::{self, RichText};
 
-use super::{find_tag_by_uuid, tag_fill_color, ContentMode, MainContentView};
+use super::new_check_draft::NewCheckDraft;
+use super::{find_tag_by_uuid, tag_fill_color};
 use crate::models::check_source_type::CheckSourceType;
-use crate::models::CheckRepeatType;
-use crate::models::Tag;
+use crate::models::{Check, CheckRepeatType, Tag};
 use crate::ui::content::toggle_button::toggle;
 use crate::ui::theme::Theme;
 
-impl MainContentView {
-    pub(super) fn show_new_check_content(&mut self, ui: &mut egui::Ui, theme: &Theme) {
+#[derive(Default)]
+pub(super) struct NewCheckView {
+    draft: NewCheckDraft,
+}
+
+pub(super) enum NewCheckAction {
+    Cancelled,
+    SaveRequested(Check),
+    ValidationFailed(String),
+}
+
+impl NewCheckView {
+    pub(super) fn show(
+        &mut self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        tags: &[Tag],
+    ) -> Option<NewCheckAction> {
         self.show_new_check_heading(ui, theme);
 
+        let mut action = None;
         egui::ScrollArea::vertical().show(ui, |ui| {
             self.show_new_check_text_fields(ui, theme);
             ui.horizontal(|ui| {
-                self.show_new_check_tag_selector(ui, theme);
+                self.show_new_check_tag_selector(ui, theme, tags);
                 self.show_new_check_source_selector(ui, theme);
                 ui.vertical(|ui| {
                     self.show_new_check_repeat_selector(ui, theme);
@@ -22,8 +39,14 @@ impl MainContentView {
                 });
             });
             self.show_new_check_toggles(ui, theme);
-            self.show_new_check_actions(ui);
+            action = self.show_new_check_actions(ui);
         });
+
+        action
+    }
+
+    pub(super) fn reset(&mut self) {
+        self.reset_new_check_form();
     }
 
     fn show_new_check_heading(&self, ui: &mut egui::Ui, theme: &Theme) {
@@ -32,28 +55,14 @@ impl MainContentView {
     }
 
     fn show_new_check_text_fields(&mut self, ui: &mut egui::Ui, theme: &Theme) {
-        labeled_text_edit(
-            ui,
-            theme,
-            "Name",
-            &mut self.new_check_draft.name,
-            false,
-            None,
-        );
-        labeled_text_edit(
-            ui,
-            theme,
-            "Detail",
-            &mut self.new_check_draft.detail,
-            true,
-            None,
-        );
+        labeled_text_edit(ui, theme, "Name", &mut self.draft.name, false, None);
+        labeled_text_edit(ui, theme, "Detail", &mut self.draft.detail, true, None);
     }
 
     fn show_new_check_source_selector(&mut self, ui: &mut egui::Ui, theme: &Theme) {
         ui.label(RichText::new("Source").color(theme.text_secondary));
         egui::ComboBox::from_id_salt("new_check_source")
-            .selected_text(source_label(&self.new_check_draft.source))
+            .selected_text(source_label(&self.draft.source))
             .show_ui(ui, |ui| {
                 for source in [
                     CheckSourceType::Game,
@@ -61,7 +70,7 @@ impl MainContentView {
                     CheckSourceType::Blueprint,
                     CheckSourceType::Turn,
                 ] {
-                    let is_selected = self.new_check_draft.source == source;
+                    let is_selected = self.draft.source == source;
                     if show_colored_option(
                         ui,
                         source_label(&source),
@@ -70,7 +79,7 @@ impl MainContentView {
                     )
                     .clicked()
                     {
-                        self.new_check_draft.source = source;
+                        self.draft.source = source;
                         ui.close();
                     }
                 }
@@ -78,22 +87,27 @@ impl MainContentView {
         ui.add_space(theme.spacing_md);
     }
 
-    fn show_new_check_tag_selector(&mut self, ui: &mut egui::Ui, theme: &Theme) {
+    fn show_new_check_tag_selector(
+        &mut self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        tags: &[Tag],
+    ) {
         ui.label(RichText::new("Tag").color(theme.text_secondary));
 
-        let selected_label = find_tag_by_uuid(&self.tags, self.new_check_draft.selected_tag_uuid)
+        let selected_label = find_tag_by_uuid(tags, self.draft.selected_tag_uuid)
             .map(|tag| tag.name.as_str())
             .unwrap_or("No tag");
 
         egui::ComboBox::from_id_salt("new_check_tag")
             .selected_text(selected_label)
             .show_ui(ui, |ui| {
-                ui.selectable_value(&mut self.new_check_draft.selected_tag_uuid, None, "No tag");
+                ui.selectable_value(&mut self.draft.selected_tag_uuid, None, "No tag");
 
-                for tag in &self.tags {
-                    let is_selected = self.new_check_draft.selected_tag_uuid == Some(tag.uuid);
+                for tag in tags {
+                    let is_selected = self.draft.selected_tag_uuid == Some(tag.uuid);
                     if show_tag_option(ui, tag, is_selected).clicked() {
-                        self.new_check_draft.selected_tag_uuid = Some(tag.uuid);
+                        self.draft.selected_tag_uuid = Some(tag.uuid);
                         ui.close();
                     }
                 }
@@ -105,7 +119,7 @@ impl MainContentView {
         ui.horizontal(|ui| {
             ui.label(RichText::new("Repeat").color(theme.text_secondary));
             egui::ComboBox::from_id_salt("new_check_repeat_kind")
-                .selected_text(repeat_label(&self.new_check_draft.repeat_case))
+                .selected_text(repeat_label(&self.draft.repeat_case))
                 .show_ui(ui, |ui| {
                     for repeat_case in [
                         CheckRepeatType::Everytime,
@@ -117,11 +131,11 @@ impl MainContentView {
                             ui,
                             repeat_label(&repeat_case),
                             repeat_color(&repeat_case, theme),
-                            same_repeat_variant(&self.new_check_draft.repeat_case, &repeat_case),
+                            same_repeat_variant(&self.draft.repeat_case, &repeat_case),
                         )
                         .clicked()
                         {
-                            self.new_check_draft.repeat_case = repeat_case;
+                            self.draft.repeat_case = repeat_case;
                             self.normalize_repeat_value();
                             ui.close();
                         }
@@ -131,13 +145,13 @@ impl MainContentView {
     }
 
     fn show_new_check_repeat_value(&mut self, ui: &mut egui::Ui, theme: &Theme) {
-        if repeat_requires_value(&self.new_check_draft.repeat_case) {
+        if repeat_requires_value(&self.draft.repeat_case) {
             ui.horizontal(|ui| {
                 labeled_text_edit(
                     ui,
                     theme,
                     "Repeat value",
-                    &mut self.new_check_draft.repeat_value,
+                    &mut self.draft.repeat_value,
                     false,
                     Some(40.0),
                 );
@@ -150,46 +164,45 @@ impl MainContentView {
     fn show_new_check_toggles(&mut self, ui: &mut egui::Ui, theme: &Theme) {
         ui.horizontal(|ui| {
             ui.label(RichText::new("Mandatory").color(theme.text_secondary));
-            ui.add(toggle(&mut self.new_check_draft.is_mandatory, theme));
+            ui.add(toggle(&mut self.draft.is_mandatory, theme));
         });
         ui.add_space(theme.spacing_lg);
     }
 
-    fn show_new_check_actions(&mut self, ui: &mut egui::Ui) {
+    fn show_new_check_actions(&mut self, ui: &mut egui::Ui) -> Option<NewCheckAction> {
+        let mut action = None;
+
         ui.horizontal(|ui| {
             if ui.button("Cancel").clicked() {
                 self.reset_new_check_form();
-                self.mode = ContentMode::General;
-                self.error_message = None;
+                action = Some(NewCheckAction::Cancelled);
             }
 
-            let save_enabled = !self.new_check_draft.name.trim().is_empty();
+            let save_enabled = !self.draft.name.trim().is_empty();
             if ui
                 .add_enabled(save_enabled, egui::Button::new("Save"))
                 .clicked()
             {
-                match self.insert_new_check() {
-                    Ok(()) => {
-                        self.reset_new_check_form();
-                        self.mode = ContentMode::General;
-                        self.error_message = None;
-                    }
-                    Err(error) => self.error_message = Some(error),
-                }
+                action = Some(match self.draft.to_check() {
+                    Ok(check) => NewCheckAction::SaveRequested(check),
+                    Err(error) => NewCheckAction::ValidationFailed(error),
+                });
             }
         });
+
+        action
     }
 
     fn normalize_repeat_value(&mut self) {
-        if !repeat_requires_value(&self.new_check_draft.repeat_case) {
-            self.new_check_draft.repeat_value.clear();
-        } else if self.new_check_draft.repeat_value.trim().is_empty() {
-            self.new_check_draft.repeat_value = "1".to_string();
+        if !repeat_requires_value(&self.draft.repeat_case) {
+            self.draft.repeat_value.clear();
+        } else if self.draft.repeat_value.trim().is_empty() {
+            self.draft.repeat_value = "1".to_string();
         }
     }
 
     fn reset_new_check_form(&mut self) {
-        self.new_check_draft = Default::default();
+        self.draft = Default::default();
     }
 }
 
@@ -253,7 +266,7 @@ fn show_colored_option(
 ) -> egui::Response {
     let response = ui.add(
         egui::Button::new(
-            egui::RichText::new(format!("   {label}")).color(ui.visuals().text_color()), // Should manage the margin with a real padding system
+            egui::RichText::new(format!("   {label}")).color(ui.visuals().text_color()),
         )
         .min_size(egui::vec2(ui.available_width(), 0.0))
         .selected(is_selected),

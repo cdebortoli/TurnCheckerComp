@@ -1,10 +1,12 @@
 use eframe::egui::{self, RichText};
 
-use super::MainContentView;
 use crate::ui::theme::Theme;
 
-impl MainContentView {
-    pub(super) fn show_comments_content(&mut self, ui: &mut egui::Ui, theme: &Theme) {
+#[derive(Default)]
+pub(super) struct CommentsView;
+
+impl CommentsView {
+    pub(super) fn show(&mut self, ui: &mut egui::Ui, theme: &Theme) {
         egui::Frame::new()
             .fill(theme.bg_secondary)
             .corner_radius(theme.corner_radius)

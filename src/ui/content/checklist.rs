@@ -1,29 +1,51 @@
 use eframe::egui::{self, RichText};
 use egui::Color32;
 
-use super::{find_tag_by_uuid, show_tag_capsule, MainContentView};
+use super::{find_tag_by_uuid, show_tag_capsule};
 use crate::models::check_source_type::CheckSourceType;
-use crate::models::{Check, CheckRepeatType};
+use crate::models::{Check, CheckRepeatType, Tag};
 use crate::ui::content::toggle_button::toggle;
 use crate::ui::theme::Theme;
 
-impl MainContentView {
-    pub(super) fn show_general_content(&mut self, ui: &mut egui::Ui, theme: &Theme) {
+#[derive(Default)]
+pub(super) struct ChecklistView;
+
+pub(super) enum ChecklistAction {
+    CheckToggled { check: Check, is_checked: bool },
+}
+
+impl ChecklistView {
+    pub(super) fn show(
+        &mut self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        checks: &[Check],
+        tags: &[Tag],
+    ) -> Option<ChecklistAction> {
         self.show_checklist_header(ui, theme);
 
-        if self.checks.is_empty() {
+        if checks.is_empty() {
             self.show_empty_checklist(ui, theme);
-            return;
+            return None;
         }
 
+        let mut action = None;
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .show(ui, |ui| {
-                for check in self.checks.clone() {
-                    self.show_check_card(ui, theme, check);
+                for check in checks.iter().cloned() {
+                    let card_action = self.show_check_card(ui, theme, tags, check);
+                    // While no previous action different to none, updated it.
+                    // When a card_action is different of none, it means that the action will be managed, then after the redraw, it will reset to none
+                    // So next new action will be able to be managed
+                    if action.is_none() {
+                        action = card_action;
+                    }
                     ui.add_space(theme.spacing_md);
                 }
             });
+
+        action
     }
 
     fn show_checklist_header(&self, ui: &mut egui::Ui, theme: &Theme) {
@@ -35,7 +57,13 @@ impl MainContentView {
         ui.label(RichText::new("No checks yet.").color(theme.text_muted));
     }
 
-    fn show_check_card(&mut self, ui: &mut egui::Ui, theme: &Theme, check: Check) {
+    fn show_check_card(
+        &mut self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        tags: &[Tag],
+        check: Check,
+    ) -> Option<ChecklistAction> {
         let mut selected_checked = check.is_checked;
 
         egui::Frame::new()
@@ -43,13 +71,16 @@ impl MainContentView {
             .corner_radius(theme.corner_radius)
             .inner_margin(theme.card_padding)
             .show(ui, |ui| {
-                self.show_check_card_header(ui, theme, &check, &mut selected_checked);
+                self.show_check_card_header(ui, theme, tags, &check, &mut selected_checked);
             });
 
         if selected_checked != check.is_checked {
-            if let Err(error) = self.update_check_status(check, selected_checked) {
-                self.error_message = Some(error);
-            }
+            Some(ChecklistAction::CheckToggled {
+                check,
+                is_checked: selected_checked,
+            })
+        } else {
+            None
         }
     }
 
@@ -57,13 +88,14 @@ impl MainContentView {
         &mut self,
         ui: &mut egui::Ui,
         theme: &Theme,
+        tags: &[Tag],
         check: &Check,
         selected_checked: &mut bool,
     ) {
         let row = ui.horizontal(|ui| {
             let (indicator_rect, _) =
                 ui.allocate_exact_size(egui::vec2(4.0, 1.0), egui::Sense::hover());
-            self.show_check_card_title(ui, theme, check);
+            self.show_check_card_title(ui, theme, tags, check);
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 self.show_sent_status_icon(ui, theme, check);
                 self.show_check_toggle(ui, selected_checked, theme);
@@ -95,27 +127,24 @@ impl MainContentView {
             .rect_filled(rect, theme.corner_radius, source_color(check, theme));
     }
 
-    fn show_check_card_title(&self, ui: &mut egui::Ui, theme: &Theme, check: &Check) {
+    fn show_check_card_title(&self, ui: &mut egui::Ui, theme: &Theme, tags: &[Tag], check: &Check) {
         ui.vertical(|ui| {
-            // First line
             ui.horizontal_wrapped(|ui| {
                 show_repeat_badge(ui, theme, &check.repeat_case);
 
-                if let Some(tag) = find_tag_by_uuid(&self.tags, check.tag_uuid) {
+                if let Some(tag) = find_tag_by_uuid(tags, check.tag_uuid) {
                     show_tag_capsule(ui, tag);
                 }
             });
 
             ui.add_space(theme.spacing_sm);
 
-            // Second line
             ui.label(
                 RichText::new(&check.name)
                     .color(theme.text_primary)
                     .family(egui::FontFamily::Name("montserrat-bold".into())),
             );
 
-            // Third line
             if let Some(detail) = &check.detail {
                 ui.add_space(theme.spacing_sm);
                 ui.label(RichText::new(detail).color(theme.text_secondary).small());

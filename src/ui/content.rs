@@ -11,13 +11,17 @@ use eframe::egui::{self, RichText};
 use tokio::sync::watch;
 use uuid::Uuid;
 
-use self::new_check_draft::NewCheckDraft;
+use self::checklist::{ChecklistAction, ChecklistView};
+use self::comments::CommentsView;
+use self::new_check::{NewCheckAction, NewCheckView};
 
 pub struct MainContentView {
     mode: ContentMode,
     checks: Vec<Check>,
     tags: Vec<Tag>,
-    new_check_draft: NewCheckDraft,
+    checklist_view: ChecklistView,
+    comments_view: CommentsView,
+    new_check_view: NewCheckView,
     error_message: Option<String>,
     restart_confirmation_unsent_checks: Option<usize>,
     needs_reload: bool,
@@ -41,7 +45,9 @@ impl MainContentView {
             mode: ContentMode::General,
             checks: Vec::new(),
             tags: Vec::new(),
-            new_check_draft: NewCheckDraft::default(),
+            checklist_view: ChecklistView::default(),
+            comments_view: CommentsView::default(),
+            new_check_view: NewCheckView::default(),
             error_message: None,
             restart_confirmation_unsent_checks: None,
             needs_reload: true,
@@ -57,7 +63,9 @@ impl MainContentView {
         self.mode = ContentMode::General;
         self.checks.clear();
         self.tags.clear();
-        self.new_check_draft = NewCheckDraft::default();
+        self.checklist_view = ChecklistView::default();
+        self.comments_view = CommentsView::default();
+        self.new_check_view.reset();
         self.error_message = None;
         self.restart_confirmation_unsent_checks = None;
         self.needs_reload = true;
@@ -105,8 +113,7 @@ impl MainContentView {
         Ok(())
     }
 
-    fn insert_new_check(&mut self) -> Result<(), String> {
-        let check = self.new_check_draft.to_check()?;
+    fn insert_new_check(&mut self, check: Check) -> Result<(), String> {
         let connection = database::establish_connection().map_err(|err| err.to_string())?;
         database::checks::insert(&connection, &check).map_err(|err| err.to_string())?;
         self.needs_reload = true;
@@ -271,9 +278,53 @@ impl MainContentView {
 
     fn show_active_content(&mut self, ui: &mut egui::Ui, theme: &Theme) {
         match self.mode {
-            ContentMode::General => self.show_general_content(ui, theme),
-            ContentMode::NewCheck => self.show_new_check_content(ui, theme),
-            ContentMode::Comments => self.show_comments_content(ui, theme),
+            ContentMode::General => {
+                let action = self
+                    .checklist_view
+                    .show(ui, theme, &self.checks, &self.tags);
+                if let Some(action) = action {
+                    self.handle_checklist_action(action);
+                }
+            }
+            ContentMode::NewCheck => {
+                let action = self.new_check_view.show(ui, theme, &self.tags);
+                if let Some(action) = action {
+                    self.handle_new_check_action(action);
+                }
+            }
+            ContentMode::Comments => {
+                self.comments_view.show(ui, theme);
+            }
+        }
+    }
+
+    fn handle_checklist_action(&mut self, action: ChecklistAction) {
+        match action {
+            ChecklistAction::CheckToggled { check, is_checked } => {
+                if let Err(error) = self.update_check_status(check, is_checked) {
+                    self.error_message = Some(error);
+                }
+            }
+        }
+    }
+
+    fn handle_new_check_action(&mut self, action: NewCheckAction) {
+        match action {
+            NewCheckAction::Cancelled => {
+                self.mode = ContentMode::General;
+                self.error_message = None;
+            }
+            NewCheckAction::SaveRequested(check) => match self.insert_new_check(check) {
+                Ok(()) => {
+                    self.new_check_view.reset();
+                    self.mode = ContentMode::General;
+                    self.error_message = None;
+                }
+                Err(error) => self.error_message = Some(error),
+            },
+            NewCheckAction::ValidationFailed(error) => {
+                self.error_message = Some(error);
+            }
         }
     }
 }

@@ -92,7 +92,8 @@ impl TurnCheckerApp {
     }
 
     pub fn native_options() -> eframe::NativeOptions {
-        eframe::NativeOptions {
+        #[warn(unused_mut)]
+        let mut options = eframe::NativeOptions {
             viewport: egui::ViewportBuilder::default()
                 .with_inner_size(CLASSIC_WINDOW_SIZE)
                 .with_min_inner_size(CLASSIC_MIN_WINDOW_SIZE)
@@ -103,7 +104,14 @@ impl TurnCheckerApp {
                 .with_titlebar_shown(true)
                 .with_title_shown(true),
             ..Default::default()
+        };
+
+        #[cfg(windows)]
+        {
+            options.renderer = eframe::Renderer::Glow;
+            options.hardware_acceleration = eframe::HardwareAcceleration::Off;
         }
+        options
     }
 
     fn app_icon() -> egui::IconData {

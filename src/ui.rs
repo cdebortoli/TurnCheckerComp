@@ -108,7 +108,7 @@ impl TurnCheckerApp {
 
         #[cfg(windows)]
         {
-            options.renderer = eframe::Renderer::Glow;
+            // options.renderer = eframe::Renderer::Glow;
             options.hardware_acceleration = eframe::HardwareAcceleration::Off;
         }
         options

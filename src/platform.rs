@@ -224,11 +224,3 @@ pub fn configure_native_options(options: &mut eframe::NativeOptions) {
     #[cfg(not(windows))]
     let _ = options;
 }
-
-pub fn log_creation_context(cc: &eframe::CreationContext<'_>) {
-    #[cfg(windows)]
-    windows::log_creation_context(cc);
-
-    #[cfg(not(windows))]
-    let _ = cc;
-}

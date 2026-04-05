@@ -3,6 +3,7 @@ name = "turn_checker_comp"
 version = "0.1.0"
 edition = "2021"
 description = "A desktop compagnon app for Turn Checker iOS App"
+build = "build.rs"
 
 [[bin]]
 name = "turn_checker_comp"
@@ -23,3 +24,4 @@ chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1.0.102"
 uuid = { version = "1", features = ["serde", "v4"] }
 qrcode = "0.14"
+toml = "0.8"

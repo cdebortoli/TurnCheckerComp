@@ -15,7 +15,6 @@ fn main() -> anyhow::Result<()> {
     let channels = channels::AppChannels::new();
 
     let native_options = ui::TurnCheckerApp::native_options();
-    platform::log_native_configuration(&native_options);
 
     eframe::run_native(
         "Turn Checker Companion",

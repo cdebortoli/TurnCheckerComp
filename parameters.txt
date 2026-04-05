@@ -1,0 +1,96 @@
+Turn Checker Companion - graphics.toml parameters
+=================================================
+
+File location
+-------------
+Place graphics.toml in the same folder as the executable.
+When you build the app, graphics.toml and this parameters.txt file are copied next to the built executable.
+If graphics.toml or parameters.txt is missing at runtime, the app recreates them with default values.
+
+Fields
+------
+1) renderer
+   Type: string
+   Available values:
+   - glow
+   - wgpu
+
+   Recommended for this app on Windows:
+   - glow
+
+2) transparency
+   Type: boolean
+   Available values:
+   - true
+   - false
+
+   Notes:
+   - true keeps the current transparent window behavior
+   - false is useful for testing whether transparency changes NVIDIA / G-SYNC behavior
+
+3) glow_hardware_acceleration
+   Type: string
+   Used only when renderer = "glow"
+   Available values:
+   - off
+   - preferred
+   - required
+
+   Recommended default:
+   - required
+
+4) wgpu_present_mode
+   Type: string
+   Used only when renderer = "wgpu"
+   Available values:
+   - fifo
+   - auto_vsync
+   - auto_no_vsync
+   - mailbox
+   - immediate
+   - fifo_relaxed
+
+   Notes:
+   - fifo is the safest general desktop default
+   - auto_no_vsync and immediate are more game-like and may tear
+   - mailbox can be useful for testing
+
+5) wgpu_power_preference
+   Type: string
+   Used only when renderer = "wgpu"
+   Available values:
+   - low_power
+   - high_performance
+   - none
+
+   Notes:
+   - low_power usually prefers the integrated GPU when available
+   - high_performance usually prefers the discrete GPU
+
+6) diagnostics_log_path
+   Type: string
+   Optional
+
+   Examples:
+   - diagnostics_log_path = "turn_checker_comp_windows_graphics.log"
+   - diagnostics_log_path = "logs/turn_checker_comp_windows_graphics.log"
+   - diagnostics_log_path = "C:/Temp/turn_checker_comp_windows_graphics.log"
+
+   Notes:
+   - if omitted, the app writes the log next to the executable
+   - relative paths are resolved from the executable folder
+
+Example
+-------
+renderer = "glow"
+transparency = true
+glow_hardware_acceleration = "required"
+wgpu_present_mode = "fifo"
+wgpu_power_preference = "low_power"
+# diagnostics_log_path = "turn_checker_comp_windows_graphics.log"
+
+Behavior notes
+--------------
+- glow_* settings are ignored when renderer = "wgpu"
+- wgpu_* settings are ignored when renderer = "glow"
+- invalid values fall back to built-in defaults and are mentioned in the diagnostics log

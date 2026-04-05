@@ -20,9 +20,17 @@ jobs:
       - name: Build release binary
         run: cargo build --release
 
+      - name: Prepare Windows artifact bundle
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/windows | Out-Null
+          Copy-Item target/release/turn_checker_comp.exe dist/windows/
+          Copy-Item target/release/graphics.toml dist/windows/
+          Copy-Item target/release/parameters.txt dist/windows/
+
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: turn_checker_comp-windows
-          path: target/release/turn_checker_comp.exe
+          path: dist/windows
           if-no-files-found: error

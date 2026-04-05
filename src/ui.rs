@@ -7,7 +7,7 @@ use eframe::egui;
 use egui::RichText;
 use tokio::runtime::Runtime;
 
-use crate::channels::UiChannels;
+use crate::{channels::UiChannels, platform};
 
 use self::content::MainContentView;
 use self::pairing::PairingView;
@@ -92,7 +92,6 @@ impl TurnCheckerApp {
     }
 
     pub fn native_options() -> eframe::NativeOptions {
-        #[warn(unused_mut)]
         let mut options = eframe::NativeOptions {
             viewport: egui::ViewportBuilder::default()
                 .with_inner_size(CLASSIC_WINDOW_SIZE)
@@ -106,11 +105,7 @@ impl TurnCheckerApp {
             ..Default::default()
         };
 
-        #[cfg(windows)]
-        {
-            // options.renderer = eframe::Renderer::Glow;
-            options.hardware_acceleration = eframe::HardwareAcceleration::Off;
-        }
+        platform::configure_native_options(&mut options);
         options
     }
 

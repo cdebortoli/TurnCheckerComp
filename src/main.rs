@@ -15,10 +15,13 @@ fn main() -> anyhow::Result<()> {
     let channels = channels::AppChannels::new();
 
     let native_options = ui::TurnCheckerApp::native_options();
+    platform::log_native_configuration(&native_options);
+
     eframe::run_native(
         "Turn Checker Companion",
         native_options,
         Box::new(move |cc| {
+            platform::log_creation_context(cc);
             egui_extras::install_image_loaders(&cc.egui_ctx);
             ui::TurnCheckerApp::configure_fonts(&cc.egui_ctx);
             Ok(Box::new(ui::TurnCheckerApp::new(

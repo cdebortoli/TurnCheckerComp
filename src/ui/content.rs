@@ -35,6 +35,7 @@ pub struct MainContentView {
 }
 
 pub enum ContentAction {
+    NewTurnNotifRequested,
     RestartRequested,
 }
 
@@ -218,6 +219,7 @@ impl MainContentView {
                     self.error_message = None;
                 }
             } else {
+                self.show_next_turn_button(ui, theme, action);
                 self.show_mode_button(ui, theme, "New Check", ContentMode::NewCheck);
                 self.show_source_checks_button(
                     ui,
@@ -241,6 +243,21 @@ impl MainContentView {
                 self.show_restart_button(ui, theme, action);
             }
         });
+    }
+
+    fn show_next_turn_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        action: &mut Option<ContentAction>,
+    ) {
+        let button = egui::Button::new(RichText::new("Next turn").color(theme.text_primary))
+            .fill(theme.bg_secondary)
+            .corner_radius(theme.corner_radius);
+
+        if ui.add(button).clicked() {
+            *action = Some(ContentAction::NewTurnNotifRequested);
+        }
     }
 
     fn show_mode_button(

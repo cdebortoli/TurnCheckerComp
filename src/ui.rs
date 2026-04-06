@@ -7,7 +7,7 @@ use eframe::egui;
 use egui::RichText;
 use tokio::runtime::Runtime;
 
-use crate::{channels::UiChannels, platform};
+use crate::{channels::UiChannels, platform, server};
 
 use self::content::MainContentView;
 use self::pairing::PairingView;
@@ -26,6 +26,7 @@ pub struct TurnCheckerApp {
     startup: StartupController,
     pairing: PairingView,
     content: MainContentView,
+    push_notification_client: server::PushNotificationClient,
     minimal_mode: bool,
     always_on_top: bool,
     classic_window_size: egui::Vec2,
@@ -69,6 +70,7 @@ impl TurnCheckerApp {
 
     pub fn new(runtime: Runtime, repaint_ctx: egui::Context, channels: UiChannels) -> Self {
         let mut repaint_refresh_rx = channels.content_refresh_rx.clone();
+        let push_notification_client = server::PushNotificationClient::new();
         //let repaint_ctx_for_task = repaint_ctx.clone();
         runtime.spawn(async move {
             while repaint_refresh_rx.changed().await.is_ok() {
@@ -80,9 +82,13 @@ impl TurnCheckerApp {
         Self {
             runtime,
             _channels: channels.clone(),
-            startup: StartupController::new(channels.content_refresh_tx.clone()),
+            startup: StartupController::new(
+                channels.content_refresh_tx.clone(),
+                push_notification_client.clone(),
+            ),
             pairing: PairingView::new(),
             content: MainContentView::new(channels.content_refresh_rx.clone()),
+            push_notification_client,
             minimal_mode: false,
             always_on_top: false,
             classic_window_size: Self::classic_window_size(),

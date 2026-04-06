@@ -16,6 +16,7 @@ pub(super) struct HealthResponse {
 pub(super) struct SyncConnectRequest {
     #[allow(dead_code)]
     pub device_id: Option<String>,
+    pub device_token: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

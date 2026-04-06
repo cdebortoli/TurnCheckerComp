@@ -15,7 +15,20 @@ pub struct PairingView {
 impl TurnCheckerApp {
     pub(super) fn handle_content_action(&mut self, action: ContentAction) {
         match action {
+            ContentAction::NewTurnNotifRequested => self.newTurnNotif(),
             ContentAction::RestartRequested => self.restart_to_pairing(),
+        }
+    }
+
+    #[allow(non_snake_case)]
+    pub(super) fn newTurnNotif(&mut self) {
+        let push_notification_client = self.push_notification_client.clone();
+        match self
+            .runtime
+            .block_on(async move { push_notification_client.send_new_turn_notification().await })
+        {
+            Ok(()) => {}
+            Err(error) => self.content.set_error_message(error.to_string()),
         }
     }
 

@@ -17,6 +17,7 @@ use super::dto::{
     ErrorResponse, HealthResponse, SyncAckRequest, SyncAckResponse, SyncConnectRequest,
     SyncConnectResponse, SyncPullQuery, SyncPullResponse, SyncPushRequest, SyncPushResponse,
 };
+use super::notifications::PushNotificationClient;
 use super::pairing::PairingState;
 use super::service::SyncService;
 
@@ -31,11 +32,13 @@ pub struct ServerConnectionInfo {
 pub async fn spawn(
     pairing_state: PairingState,
     content_refresh_tx: watch::Sender<u64>,
+    push_notification_client: PushNotificationClient,
 ) -> anyhow::Result<ServerConnectionInfo> {
     HttpServer::new(
         Arc::new(SyncService::new(database::database_path())),
         pairing_state,
         content_refresh_tx,
+        push_notification_client,
     )
     .spawn()
     .await
@@ -46,6 +49,7 @@ struct AppState {
     service: Arc<SyncService>,
     pairing_state: PairingState,
     content_refresh_tx: watch::Sender<u64>,
+    push_notification_client: PushNotificationClient,
 }
 
 pub(super) struct HttpServer {
@@ -57,12 +61,14 @@ impl HttpServer {
         service: Arc<SyncService>,
         pairing_state: PairingState,
         content_refresh_tx: watch::Sender<u64>,
+        push_notification_client: PushNotificationClient,
     ) -> Self {
         Self {
             state: AppState {
                 service,
                 pairing_state,
                 content_refresh_tx,
+                push_notification_client,
             },
         }
     }
@@ -129,7 +135,10 @@ impl HttpServer {
         State(state): State<AppState>,
         request: Result<Json<SyncConnectRequest>, JsonRejection>,
     ) -> Result<Json<SyncConnectResponse>, Response> {
-        let _request = parse_json_request("/sync/connect", request)?;
+        let request = parse_json_request("/sync/connect", request)?;
+        state
+            .push_notification_client
+            .set_device_token(request.device_token);
         state.pairing_state.mark_paired();
         Ok(Json(SyncConnectResponse {
             ok: true,

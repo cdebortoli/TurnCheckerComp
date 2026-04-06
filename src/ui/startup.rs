@@ -13,6 +13,7 @@ pub struct StartupController {
     server_started: bool,
     server_connection: Option<server::ServerConnectionInfo>,
     content_refresh_tx: watch::Sender<u64>,
+    push_notification_client: server::PushNotificationClient,
 }
 
 enum StartupState {
@@ -22,7 +23,10 @@ enum StartupState {
 }
 
 impl StartupController {
-    pub fn new(content_refresh_tx: watch::Sender<u64>) -> Self {
+    pub fn new(
+        content_refresh_tx: watch::Sender<u64>,
+        push_notification_client: server::PushNotificationClient,
+    ) -> Self {
         let state = match database::inspect_startup_state() {
             Ok(database::DatabaseStartupState::Ready) => StartupState::Ready,
             Ok(database::DatabaseStartupState::NeedsUserDecision { unsent_records }) => {
@@ -36,6 +40,7 @@ impl StartupController {
             server_started: false,
             server_connection: None,
             content_refresh_tx,
+            push_notification_client,
         }
     }
 
@@ -139,6 +144,7 @@ impl StartupController {
         match runtime.block_on(server::spawn(
             pairing_state,
             self.content_refresh_tx.clone(),
+            self.push_notification_client.clone(),
         )) {
             Ok(server_connection) => {
                 self.server_started = true;

@@ -6,6 +6,7 @@ use std::{
 
 use serde::Serialize;
 use serde_json::{Map, Value};
+use uuid::Uuid;
 
 const PUSH_NOTIFICATION_URL: &str = "https://turn-checker-apns-relay.debortolichris.workers.dev/";
 
@@ -70,20 +71,22 @@ impl PushNotificationClient {
             )
         })?;
 
-        /*
-         * let client = reqwest::Client::new();
-         *  client.post("https://apns-relay.yourname.workers.dev")
-         * .bearer_auth("your-secret-token")
-         *  .json(&serde_json::json!({ "device_token": device_token, "title": "Hello", "body": "Message from your desktop app", "data": {} })) .send() .await?;
-         */
+        let mut data_map = Map::new();
+        let new_turn_value = Value::String("new_turn".to_string());
+        data_map.insert("type".to_string(), new_turn_value);
+        // let push_id = Value::String(Uuid::new_v4());
+        if let Ok(id_value) = serde_json::to_value(Uuid::new_v4()) {
+            data_map.insert("id".to_string(), id_value);
+        }
+
         self.http_client
             .post(push_notification_url)
             .bearer_auth("3rGs4L3mRe5cLJ30")
             .json(&PushNotifRequest {
                 device_token: &device_token,
-                title: "Your turn",
-                body: "The other player has played.",
-                data: Map::new(),
+                title: "New turn",
+                body: "The new turn action was received.",
+                data: data_map,
                 environment: &self.environment,
             })
             .send()

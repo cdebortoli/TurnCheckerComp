@@ -1,15 +1,27 @@
 // This file stores the paired device token and sends placeholder push notification requests.
-use std::sync::{Arc, RwLock};
+use std::{
+    env,
+    sync::{Arc, RwLock},
+};
 
 use serde::Serialize;
+use serde_json::{Map, Value};
 
 const PUSH_NOTIFICATION_URL: &str = "https://turn-checker-apns-relay.debortolichris.workers.dev/";
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PushNotificationEnvironment {
+    Sandbox,
+    Production,
+}
 
 #[derive(Debug, Clone)]
 pub struct PushNotificationClient {
     http_client: reqwest::Client,
     push_notification_url: Option<String>,
     device_token: Arc<RwLock<Option<String>>>,
+    environment: PushNotificationEnvironment,
 }
 
 impl Default for PushNotificationClient {
@@ -28,6 +40,7 @@ impl PushNotificationClient {
             http_client: reqwest::Client::new(),
             push_notification_url: Some(push_notification_url),
             device_token: Arc::new(RwLock::new(None)),
+            environment: PushNotificationEnvironment::Sandbox,
         }
     }
 
@@ -47,19 +60,31 @@ impl PushNotificationClient {
     }
 
     pub async fn send_new_turn_notification(&self) -> anyhow::Result<()> {
-        let push_notification_url = self.push_notification_url.as_deref().ok_or_else(|| {
-            anyhow::anyhow!("push notification URL is not configured. Set {PUSH_NOTIFICATION_URL}")
-        })?;
+        let push_notification_url = self
+            .push_notification_url
+            .as_deref()
+            .ok_or_else(|| anyhow::anyhow!("push notification URL is not configured."))?;
         let device_token = self.device_token().ok_or_else(|| {
             anyhow::anyhow!(
-                "device token is not available yet. Pair the iOS app and send it through /sync/connect"
+                "device token is not available yet. Pair the iOS app and accept push notification permissions."
             )
         })?;
 
+        /*
+         * let client = reqwest::Client::new();
+         *  client.post("https://apns-relay.yourname.workers.dev")
+         * .bearer_auth("your-secret-token")
+         *  .json(&serde_json::json!({ "device_token": device_token, "title": "Hello", "body": "Message from your desktop app", "data": {} })) .send() .await?;
+         */
         self.http_client
             .post(push_notification_url)
-            .json(&NewTurnNotifRequest {
+            .bearer_auth("3rGs4L3mRe5cLJ30")
+            .json(&PushNotifRequest {
                 device_token: &device_token,
+                title: "Your turn",
+                body: "The other player has played.",
+                data: Map::new(),
+                environment: &self.environment,
             })
             .send()
             .await?
@@ -70,9 +95,12 @@ impl PushNotificationClient {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct NewTurnNotifRequest<'a> {
+struct PushNotifRequest<'a> {
     device_token: &'a str,
+    title: &'a str,
+    body: &'a str,
+    data: Map<String, Value>,
+    environment: &'a PushNotificationEnvironment,
 }
 
 fn normalize_optional_string(value: Option<String>) -> Option<String> {

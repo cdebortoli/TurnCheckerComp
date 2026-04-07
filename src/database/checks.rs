@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use anyhow::Result;
 use rusqlite::{params, Connection, OptionalExtension, Row};
 
@@ -194,6 +196,25 @@ pub fn mark_sent_by_uuids(connection: &Connection, uuids: &[uuid::Uuid]) -> Resu
 pub fn delete(connection: &Connection, id: i64) -> Result<()> {
     connection.execute("DELETE FROM checks WHERE id = ?1", [id])?;
     Ok(())
+}
+
+pub fn delete_sent_missing_uuids(connection: &Connection, uuids: &[uuid::Uuid]) -> Result<usize> {
+    let retained: HashSet<uuid::Uuid> = uuids.iter().copied().collect();
+    let mut statement = connection.prepare("SELECT id, uuid FROM checks WHERE is_sent = 1")?;
+    let rows = statement.query_map([], |row| {
+        Ok((row.get::<_, i64>(0)?, parse_uuid(row.get::<_, String>(1)?)))
+    })?;
+
+    let mut deleted = 0;
+    for row in rows {
+        let (id, uuid) = row?;
+        if !retained.contains(&uuid) {
+            delete(connection, id)?;
+            deleted += 1;
+        }
+    }
+
+    Ok(deleted)
 }
 
 fn row_to_check(row: &Row<'_>) -> rusqlite::Result<Check> {

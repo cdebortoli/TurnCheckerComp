@@ -32,27 +32,43 @@ impl SyncService {
 
     pub(super) fn push(&self, request: SyncPushRequest) -> anyhow::Result<SyncPushResponse> {
         let connection = database::establish_connection_at(&self.database_path)?;
+        let SyncPushRequest {
+            device_id: _,
+            checks,
+            comments,
+            tags,
+        } = request;
+
+        let check_uuids = checks.iter().map(|check| check.uuid).collect::<Vec<_>>();
+        let comment_uuids = comments
+            .iter()
+            .map(|comment| comment.uuid)
+            .collect::<Vec<_>>();
+        let tag_uuids = tags.iter().map(|tag| tag.uuid).collect::<Vec<_>>();
 
         let mut checks_upserted = 0;
-        for mut check in request.checks {
+        for mut check in checks {
             check.is_sent = true;
             database::checks::upsert(&connection, &check)?;
             checks_upserted += 1;
         }
+        database::checks::delete_sent_missing_uuids(&connection, &check_uuids)?;
 
         let mut comments_upserted = 0;
-        for mut comment in request.comments {
+        for mut comment in comments {
             comment.is_sent = true;
             database::comments::upsert(&connection, &comment)?;
             comments_upserted += 1;
         }
+        database::comments::delete_sent_missing_uuids(&connection, &comment_uuids)?;
 
         let mut tags_upserted = 0;
-        for mut tag in request.tags {
+        for mut tag in tags {
             tag.is_sent = true;
             database::tags::upsert(&connection, &tag)?;
             tags_upserted += 1;
         }
+        database::tags::delete_sent_missing_uuids(&connection, &tag_uuids)?;
 
         Ok(SyncPushResponse {
             checks_upserted,

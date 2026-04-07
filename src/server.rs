@@ -63,4 +63,72 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn push_deletes_missing_sent_records_but_keeps_missing_unsent_records() -> Result<()> {
+        let temp_dir = std::env::temp_dir().join(format!("turn-checker-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&temp_dir)?;
+        let db_path = temp_dir.join("sync.db");
+        let service = SyncService::new(db_path.clone());
+        let connection = database::establish_connection_at(&db_path)?;
+
+        let mut sent_check = Check::new("Delete sent check");
+        sent_check.is_sent = true;
+        database::checks::insert(&connection, &sent_check)?;
+
+        let unsent_check = Check::new("Keep unsent check");
+        database::checks::insert(&connection, &unsent_check)?;
+
+        let mut sent_comment = Comment::new(CommentType::Game, "Delete sent comment");
+        sent_comment.is_sent = true;
+        database::comments::insert(&connection, &sent_comment)?;
+
+        let unsent_comment = Comment::new(CommentType::Turn, "Keep unsent comment");
+        database::comments::insert(&connection, &unsent_comment)?;
+
+        let mut sent_tag = Tag::new("Delete sent tag", "#111111", "#FFFFFF");
+        sent_tag.is_sent = true;
+        database::tags::insert(&connection, &sent_tag)?;
+
+        let unsent_tag = Tag::new("Keep unsent tag", "#222222", "#FFFFFF");
+        database::tags::insert(&connection, &unsent_tag)?;
+
+        let pushed_check = Check::new("Remote check");
+        let pushed_comment = Comment::new(CommentType::Game, "Remote comment");
+        let pushed_tag = Tag::new("Remote tag", "#333333", "#FFFFFF");
+
+        service.push(SyncPushRequest {
+            device_id: None,
+            checks: vec![pushed_check.clone()],
+            comments: vec![pushed_comment.clone()],
+            tags: vec![pushed_tag.clone()],
+        })?;
+
+        assert!(database::checks::fetch_by_uuid(&connection, &sent_check.uuid)?.is_none());
+        let kept_unsent_check = database::checks::fetch_by_uuid(&connection, &unsent_check.uuid)?
+            .expect("unsent check exists");
+        assert!(!kept_unsent_check.is_sent);
+        let synced_check = database::checks::fetch_by_uuid(&connection, &pushed_check.uuid)?
+            .expect("pushed check exists");
+        assert!(synced_check.is_sent);
+
+        assert!(database::comments::fetch_by_uuid(&connection, &sent_comment.uuid)?.is_none());
+        let kept_unsent_comment =
+            database::comments::fetch_by_uuid(&connection, &unsent_comment.uuid)?
+                .expect("unsent comment exists");
+        assert!(!kept_unsent_comment.is_sent);
+        let synced_comment = database::comments::fetch_by_uuid(&connection, &pushed_comment.uuid)?
+            .expect("pushed comment exists");
+        assert!(synced_comment.is_sent);
+
+        assert!(database::tags::fetch_by_uuid(&connection, &sent_tag.uuid)?.is_none());
+        let kept_unsent_tag = database::tags::fetch_by_uuid(&connection, &unsent_tag.uuid)?
+            .expect("unsent tag exists");
+        assert!(!kept_unsent_tag.is_sent);
+        let synced_tag = database::tags::fetch_by_uuid(&connection, &pushed_tag.uuid)?
+            .expect("pushed tag exists");
+        assert!(synced_tag.is_sent);
+
+        Ok(())
+    }
 }

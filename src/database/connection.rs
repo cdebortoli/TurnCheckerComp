@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use anyhow::Result;
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 
 use crate::database::checks;
 use crate::database::tags;
@@ -118,6 +118,13 @@ fn configure_connection(connection: &Connection) -> Result<()> {
             is_sent INTEGER NOT NULL DEFAULT 0
         );
 
+        CREATE TABLE IF NOT EXISTS current_session (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            game_uuid TEXT,
+            game_name TEXT NOT NULL,
+            turn_number INTEGER NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_tags_uuid ON tags(uuid);
         CREATE INDEX IF NOT EXISTS idx_checks_uuid ON checks(uuid);
         CREATE INDEX IF NOT EXISTS idx_comments_uuid ON comments(uuid);
@@ -227,13 +234,15 @@ fn remove_if_exists(path: &std::path::Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
+    use uuid::Uuid;
 
     use super::{
         establish_connection_at, establish_in_memory_connection, insert_debug_unsent_check,
         inspect_startup_state_at, reset_database_at, DatabaseStartupState,
     };
     use crate::database::checks;
-    use crate::models::Check;
+    use crate::database::current_session;
+    use crate::models::{Check, CurrentSession};
 
     #[test]
     fn startup_state_detects_unsent_records() -> Result<()> {
@@ -250,6 +259,8 @@ mod tests {
         let connection = establish_connection_at(&db_path)?;
         let check = Check::new("Scout");
         checks::insert(&connection, &check)?;
+        let session = CurrentSession::new(Some(Uuid::new_v4()), "Civ VI", 8);
+        current_session::upsert(&connection, &session)?;
 
         assert_eq!(
             inspect_startup_state_at(db_path)?,
@@ -272,6 +283,8 @@ mod tests {
         let mut check = Check::new("Sent");
         check.is_sent = true;
         checks::insert(&connection, &check)?;
+        let session = CurrentSession::new(Some(Uuid::new_v4()), "Civ VI", 4);
+        current_session::upsert(&connection, &session)?;
         drop(connection);
 
         assert_eq!(
@@ -281,6 +294,7 @@ mod tests {
 
         let connection = establish_connection_at(&db_path)?;
         assert!(checks::fetch_all(&connection)?.is_empty());
+        assert!(current_session::fetch(&connection)?.is_none());
 
         Ok(())
     }
@@ -295,12 +309,15 @@ mod tests {
         let connection = establish_connection_at(&db_path)?;
         let check = Check::new("Cleanup");
         checks::insert(&connection, &check)?;
+        let session = CurrentSession::new(Some(Uuid::new_v4()), "Civ VI", 11);
+        current_session::upsert(&connection, &session)?;
         drop(connection);
 
         reset_database_at(db_path.clone())?;
 
         let connection = establish_connection_at(&db_path)?;
         assert!(checks::fetch_all(&connection)?.is_empty());
+        assert!(current_session::fetch(&connection)?.is_none());
 
         Ok(())
     }
@@ -328,10 +345,12 @@ mod tests {
 
         let connection = establish_connection_at(&db_path)?;
         assert!(checks::fetch_all(&connection)?.is_empty());
+        assert!(current_session::fetch(&connection)?.is_none());
         drop(connection);
 
         let reopened = establish_connection_at(&db_path)?;
         assert!(checks::fetch_all(&reopened)?.is_empty());
+        assert!(current_session::fetch(&reopened)?.is_none());
 
         Ok(())
     }

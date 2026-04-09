@@ -7,7 +7,7 @@ mod source_checks;
 mod toggle_button;
 
 use crate::database;
-use crate::models::{check_source_type::CheckSourceType, Check, Tag};
+use crate::models::{check_source_type::CheckSourceType, Check, CurrentSession, Tag};
 use crate::ui::theme::Theme;
 use eframe::egui::{self, RichText};
 use tokio::sync::watch;
@@ -23,6 +23,7 @@ pub struct MainContentView {
     checks: Vec<Check>,
     source_checks: Vec<Check>,
     tags: Vec<Tag>,
+    current_session: Option<CurrentSession>,
     checklist_view: ChecklistView,
     comments_view: CommentsView,
     new_check_view: NewCheckView,
@@ -60,6 +61,7 @@ impl MainContentView {
             checks: Vec::new(),
             source_checks: Vec::new(),
             tags: Vec::new(),
+            current_session: None,
             checklist_view: ChecklistView::default(),
             comments_view: CommentsView::default(),
             new_check_view: NewCheckView::default(),
@@ -81,6 +83,7 @@ impl MainContentView {
         self.checks.clear();
         self.source_checks.clear();
         self.tags.clear();
+        self.current_session = None;
         self.checklist_view = ChecklistView::default();
         self.comments_view = CommentsView::default();
         self.new_check_view.reset();
@@ -115,10 +118,11 @@ impl MainContentView {
         };
 
         match Self::load_content(source_filter) {
-            Ok((checks, tags, source_checks)) => {
+            Ok((checks, tags, source_checks, current_session)) => {
                 self.checks = checks;
                 self.tags = tags;
                 self.source_checks = source_checks;
+                self.current_session = current_session;
                 self.error_message = None;
             }
             Err(error) => self.error_message = Some(error),
@@ -128,7 +132,7 @@ impl MainContentView {
 
     fn load_content(
         source_filter: Option<CheckSourceType>,
-    ) -> Result<(Vec<Check>, Vec<Tag>, Vec<Check>), String> {
+    ) -> Result<(Vec<Check>, Vec<Tag>, Vec<Check>, Option<CurrentSession>), String> {
         let connection = database::establish_connection().map_err(|err| err.to_string())?;
         let checks = database::checks::fetch_all(&connection).map_err(|err| err.to_string())?;
         let tags = database::tags::fetch_all(&connection).map_err(|err| err.to_string())?;
@@ -137,7 +141,9 @@ impl MainContentView {
                 .map_err(|err| err.to_string())?,
             None => Vec::new(),
         };
-        Ok((checks, tags, source_checks))
+        let current_session =
+            database::current_session::fetch(&connection).map_err(|err| err.to_string())?;
+        Ok((checks, tags, source_checks, current_session))
     }
 
     fn update_check_status(&mut self, mut check: Check, is_checked: bool) -> Result<(), String> {
@@ -158,10 +164,10 @@ impl MainContentView {
     }
 
     fn handle_restart_click(&mut self) -> Option<ContentAction> {
-        match self.count_unsent_checks() {
+        match self.count_unsent_records() {
             Ok(0) => Some(ContentAction::RestartRequested),
-            Ok(unsent_checks) => {
-                self.restart_confirmation_unsent_checks = Some(unsent_checks);
+            Ok(unsent_records) => {
+                self.restart_confirmation_unsent_checks = Some(unsent_records);
                 None
             }
             Err(error) => {
@@ -171,9 +177,16 @@ impl MainContentView {
         }
     }
 
-    fn count_unsent_checks(&self) -> Result<usize, String> {
+    fn count_unsent_records(&self) -> Result<usize, String> {
         let connection = database::establish_connection().map_err(|err| err.to_string())?;
-        database::checks::count_unsent(&connection).map_err(|err| err.to_string())
+        let checks = database::checks::count_unsent(&connection).map_err(|err| err.to_string())?;
+        let comments = database::comments::fetch_unsent(&connection, None)
+            .map_err(|err| err.to_string())?
+            .len();
+        let tags = database::tags::fetch_unsent(&connection, None)
+            .map_err(|err| err.to_string())?
+            .len();
+        Ok(checks + comments + tags)
     }
 
     pub fn show(&mut self, ui: &mut egui::Ui) -> Option<ContentAction> {
@@ -380,9 +393,13 @@ impl MainContentView {
     fn show_active_content(&mut self, ui: &mut egui::Ui, theme: &Theme) {
         match self.mode {
             ContentMode::General => {
-                let action = self
-                    .checklist_view
-                    .show(ui, theme, &self.checks, &self.tags);
+                let action = self.checklist_view.show(
+                    ui,
+                    theme,
+                    self.current_session.as_ref(),
+                    &self.checks,
+                    &self.tags,
+                );
                 if let Some(action) = action {
                     self.handle_checklist_action(action);
                 }

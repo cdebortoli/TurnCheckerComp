@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use chrono::Utc;
 
-use crate::database;
+use crate::{database, models::CurrentSession};
 
 use super::dto::{
     SyncAckRequest, SyncAckResponse, SyncPullResponse, SyncPushRequest, SyncPushResponse,
@@ -26,17 +26,33 @@ impl SyncService {
             checks: database::checks::fetch_unsent(&connection, limit)?,
             comments: database::comments::fetch_unsent(&connection, limit)?,
             tags: database::tags::fetch_unsent(&connection, limit)?,
+            current_session: database::current_session::fetch(&connection)?,
             server_time: Utc::now(),
         })
     }
 
+    pub(super) fn validate_received_session(
+        &self,
+        received_game_session: &Option<CurrentSession>,
+    ) -> anyhow::Result<()> {
+        let connection = database::establish_connection_at(&self.database_path)?;
+        database::current_session::validate_session_match(&connection, received_game_session)
+    }
+
+    pub(super) fn validate_push_request(&self, request: &SyncPushRequest) -> anyhow::Result<()> {
+        self.validate_received_session(&request.current_session)
+    }
+
     pub(super) fn push(&self, request: SyncPushRequest) -> anyhow::Result<SyncPushResponse> {
+        self.validate_push_request(&request)?;
+
         let connection = database::establish_connection_at(&self.database_path)?;
         let SyncPushRequest {
             device_id: _,
             checks,
             comments,
             tags,
+            current_session,
         } = request;
 
         let check_uuids = checks.iter().map(|check| check.uuid).collect::<Vec<_>>();
@@ -70,10 +86,18 @@ impl SyncService {
         }
         database::tags::delete_sent_missing_uuids(&connection, &tag_uuids)?;
 
+        let current_session_upserted = if let Some(current_session) = current_session {
+            database::current_session::upsert(&connection, &current_session)?;
+            1
+        } else {
+            0
+        };
+
         Ok(SyncPushResponse {
             checks_upserted,
             comments_upserted,
             tags_upserted,
+            current_session_upserted,
             server_time: Utc::now(),
         })
     }

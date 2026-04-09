@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::models::{Check, Comment, Tag};
+use crate::models::{Check, Comment, CurrentSession, Tag};
 
 #[derive(Debug, Serialize)]
 pub(super) struct HealthResponse {
@@ -17,6 +17,8 @@ pub(super) struct SyncConnectRequest {
     #[allow(dead_code)]
     pub device_id: Option<String>,
     pub device_token: Option<String>,
+    #[serde(default)]
+    pub current_session: Option<CurrentSession>,
 }
 
 #[derive(Debug, Serialize)]
@@ -41,6 +43,8 @@ pub(super) struct SyncPushRequest {
     pub checks: Vec<Check>,
     pub comments: Vec<Comment>,
     pub tags: Vec<Tag>,
+    #[serde(default)]
+    pub current_session: Option<CurrentSession>,
 }
 
 #[derive(Debug, Serialize)]
@@ -49,6 +53,7 @@ pub(super) struct SyncPushResponse {
     pub checks_upserted: usize,
     pub comments_upserted: usize,
     pub tags_upserted: usize,
+    pub current_session_upserted: usize,
     pub server_time: DateTime<Utc>,
 }
 
@@ -77,6 +82,7 @@ pub(super) struct SyncPullResponse {
     pub checks: Vec<Check>,
     pub comments: Vec<Comment>,
     pub tags: Vec<Tag>,
+    pub current_session: Option<CurrentSession>,
     pub server_time: DateTime<Utc>,
 }
 

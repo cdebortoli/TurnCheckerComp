@@ -136,6 +136,12 @@ impl HttpServer {
         request: Result<Json<SyncConnectRequest>, JsonRejection>,
     ) -> Result<Json<SyncConnectResponse>, Response> {
         let request = parse_json_request("/sync/connect", request)?;
+        if let Err(error) = state
+            .service
+            .validate_received_session(&request.current_session)
+        {
+            return Err(conflict_response(error));
+        }
         state
             .push_notification_client
             .set_device_token(request.device_token);
@@ -158,6 +164,9 @@ impl HttpServer {
         request: Result<Json<SyncPushRequest>, JsonRejection>,
     ) -> Result<Json<SyncPushResponse>, Response> {
         let request = parse_json_request("/sync/push", request)?;
+        if let Err(error) = state.service.validate_push_request(&request) {
+            return Err(conflict_response(error));
+        }
         match state.service.push(request) {
             Ok(response) => {
                 notify_content_changed(&state.content_refresh_tx);
@@ -181,6 +190,16 @@ impl HttpServer {
             })
             .map_err(|error| AppError::from(error).into_response())
     }
+}
+
+fn conflict_response(error: anyhow::Error) -> Response {
+    (
+        StatusCode::CONFLICT,
+        Json(ErrorResponse {
+            error: error.to_string(),
+        }),
+    )
+        .into_response()
 }
 
 fn notify_content_changed(content_refresh_tx: &watch::Sender<u64>) {

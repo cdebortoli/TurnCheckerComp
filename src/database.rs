@@ -1,6 +1,7 @@
 pub mod checks;
 pub mod comments;
 pub mod connection;
+pub mod current_session;
 pub mod tags;
 
 use anyhow::Result;

@@ -29,30 +29,15 @@ pub fn fetch_all(connection: &Connection) -> Result<Vec<Tag>> {
     Ok(tags)
 }
 
-pub fn fetch_unsent(connection: &Connection, limit: Option<usize>) -> Result<Vec<Tag>> {
-    match limit {
-        Some(limit) => {
-            let mut statement = connection.prepare(
-                "SELECT id, uuid, name, color, text_color, is_sent
-                 FROM tags
-                 WHERE is_sent = 0
-                 ORDER BY name
-                 LIMIT ?1",
-            )?;
-            let rows = statement.query_map([limit as i64], row_to_tag)?;
-            Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
-        }
-        None => {
-            let mut statement = connection.prepare(
-                "SELECT id, uuid, name, color, text_color, is_sent
-                 FROM tags
-                 WHERE is_sent = 0
-                 ORDER BY name",
-            )?;
-            let rows = statement.query_map([], row_to_tag)?;
-            Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
-        }
-    }
+pub fn fetch_unsent(connection: &Connection) -> Result<Vec<Tag>> {
+    let mut statement = connection.prepare(
+        "SELECT id, uuid, name, color, text_color, is_sent
+        FROM tags
+        WHERE is_sent = 0
+        ORDER BY name",
+    )?;
+    let rows = statement.query_map([], row_to_tag)?;
+    Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
 }
 
 pub fn fetch_by_uuid(connection: &Connection, uuid: &uuid::Uuid) -> Result<Option<Tag>> {

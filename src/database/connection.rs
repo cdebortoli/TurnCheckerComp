@@ -1,3 +1,4 @@
+// TODO : When restoring at startup, maybe not push again from ios ?
 use std::fs;
 use std::path::PathBuf;
 
@@ -328,7 +329,7 @@ mod tests {
 
         insert_debug_unsent_check(&connection)?;
         assert_eq!(checks::fetch_all(&connection)?.len(), 1);
-        assert_eq!(checks::fetch_unsent(&connection, None)?.len(), 1);
+        assert_eq!(checks::fetch_unsent(&connection)?.len(), 1);
 
         insert_debug_unsent_check(&connection)?;
         assert_eq!(checks::fetch_all(&connection)?.len(), 2);

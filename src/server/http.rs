@@ -15,7 +15,7 @@ use crate::database;
 
 use super::dto::{
     ErrorResponse, HealthResponse, SyncAckRequest, SyncAckResponse, SyncConnectRequest,
-    SyncConnectResponse, SyncPullQuery, SyncPullResponse, SyncPushRequest, SyncPushResponse,
+    SyncConnectResponse, SyncPullRequest, SyncPullResponse, SyncPushRequest, SyncPushResponse,
 };
 use super::notifications::PushNotificationClient;
 use super::pairing::PairingState;
@@ -109,7 +109,7 @@ impl HttpServer {
         Router::new()
             .route("/health", get(Self::health))
             .route("/sync/connect", post(Self::sync_connect))
-            .route("/sync/pull", get(Self::sync_pull))
+            .route("/sync/pull", post(Self::sync_pull))
             .route("/sync/push", post(Self::sync_push))
             .route("/sync/ack", post(Self::sync_ack))
             .with_state(self.state.clone())
@@ -154,9 +154,16 @@ impl HttpServer {
 
     async fn sync_pull(
         State(state): State<AppState>,
-        Query(query): Query<SyncPullQuery>,
-    ) -> Result<Json<SyncPullResponse>, AppError> {
-        Ok(Json(state.service.pull(query.limit)?))
+        request: Result<Json<SyncPullRequest>, JsonRejection>,
+    ) -> Result<Json<SyncPullResponse>, Response> {
+        let request = parse_json_request("/sync/pull", request)?;
+        match state.service.pull(request) {
+            Ok(response) => {
+                notify_content_changed(&state.content_refresh_tx);
+                Ok(Json(response))
+            }
+            Err(error) => Err(AppError::from(error).into_response()),
+        }
     }
 
     async fn sync_push(

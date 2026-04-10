@@ -28,30 +28,15 @@ pub fn fetch_all(connection: &Connection) -> Result<Vec<Comment>> {
     Ok(comments)
 }
 
-pub fn fetch_unsent(connection: &Connection, limit: Option<usize>) -> Result<Vec<Comment>> {
-    match limit {
-        Some(limit) => {
-            let mut statement = connection.prepare(
-                "SELECT id, uuid, comment_type, content, is_sent
-                 FROM comments
-                 WHERE is_sent = 0
-                 ORDER BY id
-                 LIMIT ?1",
-            )?;
-            let rows = statement.query_map([limit as i64], row_to_comment)?;
-            Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
-        }
-        None => {
-            let mut statement = connection.prepare(
-                "SELECT id, uuid, comment_type, content, is_sent
-                 FROM comments
-                 WHERE is_sent = 0
-                 ORDER BY id",
-            )?;
-            let rows = statement.query_map([], row_to_comment)?;
-            Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
-        }
-    }
+pub fn fetch_unsent(connection: &Connection) -> Result<Vec<Comment>> {
+    let mut statement = connection.prepare(
+        "SELECT id, uuid, comment_type, content, is_sent
+        FROM comments
+        WHERE is_sent = 0
+        ORDER BY id",
+    )?;
+    let rows = statement.query_map([], row_to_comment)?;
+    Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
 }
 
 pub fn fetch_by_uuid(connection: &Connection, uuid: &uuid::Uuid) -> Result<Option<Comment>> {

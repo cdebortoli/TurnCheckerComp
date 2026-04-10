@@ -180,10 +180,10 @@ impl MainContentView {
     fn count_unsent_records(&self) -> Result<usize, String> {
         let connection = database::establish_connection().map_err(|err| err.to_string())?;
         let checks = database::checks::count_unsent(&connection).map_err(|err| err.to_string())?;
-        let comments = database::comments::fetch_unsent(&connection, None)
+        let comments = database::comments::fetch_unsent(&connection)
             .map_err(|err| err.to_string())?
             .len();
-        let tags = database::tags::fetch_unsent(&connection, None)
+        let tags = database::tags::fetch_unsent(&connection)
             .map_err(|err| err.to_string())?
             .len();
         Ok(checks + comments + tags)

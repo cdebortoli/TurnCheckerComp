@@ -14,7 +14,7 @@ mod tests {
     use anyhow::Result;
     use uuid::Uuid;
 
-    use super::dto::{SyncAckRequest, SyncPushRequest};
+    use super::dto::{SyncAckRequest, SyncPullRequest, SyncPushRequest};
     use super::service::SyncService;
     use crate::database;
     use crate::models::{Check, Comment, CommentType, CurrentSession, Tag};
@@ -31,9 +31,13 @@ mod tests {
         local_check.is_sent = false;
         database::checks::insert(&connection, &local_check)?;
         let local_session = CurrentSession::new(Some(Uuid::new_v4()), "Civ VI", 9);
+        let local_session_cloned = local_session.clone();
         database::current_session::upsert(&connection, &local_session)?;
 
-        let pull_before = service.pull(None)?;
+        let pull_before = service.pull(SyncPullRequest {
+            device_id: None,
+            current_session: Some(local_session),
+        })?;
         assert_eq!(pull_before.checks.len(), 1);
         assert_eq!(pull_before.checks[0].uuid, local_check.uuid);
         let pulled_session = pull_before
@@ -47,9 +51,13 @@ mod tests {
             comments: vec![],
             tags: vec![],
             device_id: None,
+            current_session: None,
         })?;
         assert_eq!(ack_response.checks_marked_sent, 1);
-        let pull_after_ack = service.pull(None)?;
+        let pull_after_ack = service.pull(SyncPullRequest {
+            device_id: None,
+            current_session: Some(local_session_cloned),
+        })?;
         assert!(pull_after_ack.checks.is_empty());
         let pulled_session = pull_after_ack
             .current_session

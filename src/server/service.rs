@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use chrono::Utc;
 
-use crate::{database, models::CurrentSession};
+use crate::{database, models::CurrentSession, server::dto::SyncPullRequest};
 
 use super::dto::{
     SyncAckRequest, SyncAckResponse, SyncPullResponse, SyncPushRequest, SyncPushResponse,
@@ -19,13 +19,13 @@ impl SyncService {
         Self { database_path }
     }
 
-    pub(super) fn pull(&self, limit: Option<usize>) -> anyhow::Result<SyncPullResponse> {
+    pub(super) fn pull(&self, request: SyncPullRequest) -> anyhow::Result<SyncPullResponse> {
         let connection = database::establish_connection_at(&self.database_path)?;
 
         Ok(SyncPullResponse {
-            checks: database::checks::fetch_unsent(&connection, limit)?,
-            comments: database::comments::fetch_unsent(&connection, limit)?,
-            tags: database::tags::fetch_unsent(&connection, limit)?,
+            checks: database::checks::fetch_unsent(&connection)?,
+            comments: database::comments::fetch_unsent(&connection)?,
+            tags: database::tags::fetch_unsent(&connection)?,
             current_session: database::current_session::fetch(&connection)?,
             server_time: Utc::now(),
         })

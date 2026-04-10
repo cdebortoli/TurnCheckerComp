@@ -29,10 +29,10 @@ pub(super) struct SyncConnectResponse {
 }
 
 #[derive(Debug, Deserialize)]
-pub(super) struct SyncPullQuery {
+pub(super) struct SyncPullRequest {
     #[allow(dead_code)]
     pub device_id: Option<String>,
-    pub limit: Option<usize>,
+    pub current_session: Option<CurrentSession>,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -65,6 +65,7 @@ pub(super) struct SyncAckRequest {
     pub checks: Vec<Uuid>,
     pub comments: Vec<Uuid>,
     pub tags: Vec<Uuid>,
+    pub current_session: Option<CurrentSession>,
 }
 
 #[derive(Debug, Serialize)]

@@ -78,30 +78,15 @@ pub fn fetch_by_source(connection: &Connection, source: CheckSourceType) -> Resu
     Ok(checks)
 }
 
-pub fn fetch_unsent(connection: &Connection, limit: Option<usize>) -> Result<Vec<Check>> {
-    match limit {
-        Some(limit) => {
-            let mut statement = connection.prepare(
-                "SELECT id, uuid, name, detail, source, repeat_type, repeat_value, tag_uuid, position, is_mandatory, is_checked, is_sent
-                 FROM checks
-                 WHERE is_sent = 0
-                 ORDER BY position, name
-                 LIMIT ?1",
-            )?;
-            let rows = statement.query_map([limit as i64], row_to_check)?;
-            Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
-        }
-        None => {
-            let mut statement = connection.prepare(
-                "SELECT id, uuid, name, detail, source, repeat_type, repeat_value, tag_uuid, position, is_mandatory, is_checked, is_sent
-                 FROM checks
-                 WHERE is_sent = 0
-                 ORDER BY position, name",
-            )?;
-            let rows = statement.query_map([], row_to_check)?;
-            Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
-        }
-    }
+pub fn fetch_unsent(connection: &Connection) -> Result<Vec<Check>> {
+    let mut statement = connection.prepare(
+      "SELECT id, uuid, name, detail, source, repeat_type, repeat_value, tag_uuid, position, is_mandatory, is_checked, is_sent
+        FROM checks
+        WHERE is_sent = 0
+        ORDER BY position, name",
+  )?;
+    let rows = statement.query_map([], row_to_check)?;
+    Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
 }
 
 pub fn count_unsent(connection: &Connection) -> Result<usize> {

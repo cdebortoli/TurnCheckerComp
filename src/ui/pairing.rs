@@ -28,7 +28,7 @@ impl TurnCheckerApp {
             .block_on(async move { push_notification_client.send_new_turn_notification().await })
         {
             Ok(()) => {}
-            Err(error) => self.content.set_error_message(error.to_string()),
+            Err(error) => self.content.cancel_next_turn_wait(error.to_string()),
         }
     }
 

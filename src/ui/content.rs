@@ -3,6 +3,7 @@ mod checklist;
 mod comments;
 mod new_check;
 mod new_check_draft;
+mod next_turn_waiting;
 mod source_checks;
 mod toggle_button;
 
@@ -16,6 +17,7 @@ use uuid::Uuid;
 use self::checklist::{ChecklistAction, ChecklistView};
 use self::comments::CommentsView;
 use self::new_check::{NewCheckAction, NewCheckView};
+use self::next_turn_waiting::NextTurnWaitingView;
 use self::source_checks::SourceChecksView;
 
 pub struct MainContentView {
@@ -27,11 +29,11 @@ pub struct MainContentView {
     checklist_view: ChecklistView,
     comments_view: CommentsView,
     new_check_view: NewCheckView,
+    next_turn_waiting_view: NextTurnWaitingView,
     source_checks_view: SourceChecksView,
     source_checks_config: Option<SourceChecksConfig>,
     error_message: Option<String>,
     restart_confirmation_unsent_checks: Option<usize>,
-    next_turn_wait_state: Option<NextTurnWaitState>,
     needs_reload: bool,
     content_refresh_rx: watch::Receiver<u64>,
 }
@@ -41,9 +43,10 @@ pub enum ContentAction {
     RestartRequested,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ContentMode {
     General,
+    WaitingForNextTurn,
     NewCheck,
     SourceChecks,
     Comments,
@@ -53,12 +56,6 @@ enum ContentMode {
 struct SourceChecksConfig {
     title: &'static str,
     source: CheckSourceType,
-}
-
-#[derive(Clone, Copy)]
-struct NextTurnWaitState {
-    baseline_turn_number: i32,
-    game_uuid: Option<Uuid>,
 }
 
 impl MainContentView {
@@ -72,11 +69,11 @@ impl MainContentView {
             checklist_view: ChecklistView::default(),
             comments_view: CommentsView::default(),
             new_check_view: NewCheckView::default(),
+            next_turn_waiting_view: NextTurnWaitingView::default(),
             source_checks_view: SourceChecksView::default(),
             source_checks_config: None,
             error_message: None,
             restart_confirmation_unsent_checks: None,
-            next_turn_wait_state: None,
             needs_reload: true,
             content_refresh_rx,
         }
@@ -87,7 +84,8 @@ impl MainContentView {
     }
 
     pub fn cancel_next_turn_wait(&mut self, message: impl Into<String>) {
-        self.next_turn_wait_state = None;
+        self.next_turn_waiting_view.cancel_wait();
+        self.mode = ContentMode::General;
         self.error_message = Some(message.into());
     }
 
@@ -100,16 +98,16 @@ impl MainContentView {
         self.checklist_view = ChecklistView::default();
         self.comments_view = CommentsView::default();
         self.new_check_view.reset();
+        self.next_turn_waiting_view = NextTurnWaitingView::default();
         self.source_checks_view = SourceChecksView::default();
         self.source_checks_config = None;
         self.error_message = None;
         self.restart_confirmation_unsent_checks = None;
-        self.next_turn_wait_state = None;
         self.needs_reload = true;
     }
 
     fn is_waiting_for_next_turn(&self) -> bool {
-        self.next_turn_wait_state.is_some()
+        self.next_turn_waiting_view.is_waiting()
     }
 
     fn start_next_turn_wait(&mut self) -> Result<(), String> {
@@ -117,31 +115,18 @@ impl MainContentView {
             return Err("No current session is available yet.".to_string());
         };
 
-        self.next_turn_wait_state = Some(NextTurnWaitState {
-            baseline_turn_number: current_session.turn_number,
-            game_uuid: current_session.game_uuid,
-        });
+        self.next_turn_waiting_view.start_wait(current_session);
+        self.mode = ContentMode::WaitingForNextTurn;
         self.error_message = None;
         Ok(())
     }
 
     fn try_finish_next_turn_wait(&mut self) {
-        let Some(wait_state) = self.next_turn_wait_state else {
-            return;
-        };
-
-        let Some(current_session) = self.current_session.as_ref() else {
-            return;
-        };
-
-        if let Some(expected_game_uuid) = wait_state.game_uuid {
-            if current_session.game_uuid != Some(expected_game_uuid) {
-                return;
-            }
-        }
-
-        if current_session.turn_number > wait_state.baseline_turn_number {
-            self.next_turn_wait_state = None;
+        if self
+            .next_turn_waiting_view
+            .try_finish_wait(self.current_session.as_ref())
+        {
+            self.mode = ContentMode::General;
         }
     }
 
@@ -274,16 +259,8 @@ impl MainContentView {
         theme: &Theme,
         action: &mut Option<ContentAction>,
     ) {
-        ui.horizontal(|ui| {
-            if self.mode != ContentMode::General {
-                if ui
-                    .button(RichText::new("Back").color(theme.text_primary))
-                    .clicked()
-                {
-                    self.mode = ContentMode::General;
-                    self.error_message = None;
-                }
-            } else {
+        ui.horizontal(|ui| match self.mode {
+            ContentMode::General | ContentMode::WaitingForNextTurn => {
                 ui.add_enabled_ui(!self.is_waiting_for_next_turn(), |ui| {
                     self.show_next_turn_button(ui, theme, action);
                     self.show_mode_button(ui, theme, "New Check", ContentMode::NewCheck);
@@ -308,6 +285,15 @@ impl MainContentView {
                     self.show_mode_button(ui, theme, "Comments", ContentMode::Comments);
                     self.show_restart_button(ui, theme, action);
                 });
+            }
+            _ => {
+                if ui
+                    .button(RichText::new("Back").color(theme.text_primary))
+                    .clicked()
+                {
+                    self.mode = ContentMode::General;
+                    self.error_message = None;
+                }
             }
         });
     }
@@ -448,12 +434,6 @@ impl MainContentView {
     }
 
     fn show_active_content(&mut self, ui: &mut egui::Ui, theme: &Theme) {
-        // Should be managed as a mode ?
-        if self.is_waiting_for_next_turn() {
-            self.show_waiting_for_next_turn(ui, theme);
-            return;
-        }
-
         match self.mode {
             ContentMode::General => {
                 let action = self.checklist_view.show(
@@ -466,6 +446,9 @@ impl MainContentView {
                 if let Some(action) = action {
                     self.handle_checklist_action(action);
                 }
+            }
+            ContentMode::WaitingForNextTurn => {
+                self.next_turn_waiting_view.show(ui, theme);
             }
             ContentMode::NewCheck => {
                 let action = self.new_check_view.show(ui, theme, &self.tags);
@@ -488,27 +471,6 @@ impl MainContentView {
                 self.comments_view.show(ui, theme);
             }
         }
-    }
-
-    fn show_waiting_for_next_turn(&self, ui: &mut egui::Ui, theme: &Theme) {
-        egui::Frame::new()
-            .fill(theme.bg_turn_card)
-            .inner_margin(theme.card_padding)
-            .corner_radius(theme.corner_radius)
-            .show(ui, |ui| {
-                ui.vertical_centered(|ui| {
-                    ui.heading(RichText::new("Waiting for next turn...").color(theme.text_primary));
-                    ui.add_space(theme.spacing_md);
-                    ui.spinner();
-                    ui.add_space(theme.spacing_md);
-                    ui.label(
-                        RichText::new(
-                            "The app will unlock automatically when the new turn is received.",
-                        )
-                        .color(theme.text_secondary),
-                    );
-                });
-            });
     }
 
     fn handle_checklist_action(&mut self, action: ChecklistAction) {
@@ -590,7 +552,7 @@ fn show_tag_capsule(ui: &mut egui::Ui, tag: &Tag) {
 
 #[cfg(test)]
 mod tests {
-    use super::{apply_check_status_update, MainContentView};
+    use super::{apply_check_status_update, ContentMode, MainContentView};
     use crate::models::{Check, CurrentSession};
     use tokio::sync::watch;
     use uuid::Uuid;
@@ -630,11 +592,13 @@ mod tests {
 
         view.start_next_turn_wait().expect("wait should start");
         assert!(view.is_waiting_for_next_turn());
+        assert_eq!(view.mode, ContentMode::WaitingForNextTurn);
 
         view.current_session = Some(CurrentSession::new(Some(game_uuid), "Civ VI", 6));
         view.try_finish_next_turn_wait();
 
         assert!(!view.is_waiting_for_next_turn());
+        assert_eq!(view.mode, ContentMode::General);
     }
 
     #[test]
@@ -674,6 +638,7 @@ mod tests {
         view.cancel_next_turn_wait("push failed");
 
         assert!(!view.is_waiting_for_next_turn());
+        assert_eq!(view.mode, ContentMode::General);
         assert_eq!(view.error_message.as_deref(), Some("push failed"));
     }
 }

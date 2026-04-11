@@ -40,6 +40,20 @@ pub fn fetch(connection: &Connection) -> Result<Option<CurrentSession>> {
     Ok(session)
 }
 
+pub fn increment_new_turn_number_if_needed(connection: &Connection) -> Result<bool> {
+    let Some(mut session) = fetch(connection)? else {
+        return Ok(false);
+    };
+
+    if session.has_new_turn() {
+        return Ok(false);
+    }
+
+    session.new_turn_number += 1;
+    upsert(connection, &session)?;
+    Ok(true)
+}
+
 pub fn validate_session_match(
     connection: &Connection,
     received_session: &Option<CurrentSession>,
@@ -122,6 +136,25 @@ mod tests {
         assert_eq!(fetched.game_name, "Civ VII");
         assert_eq!(fetched.turn_number, 3);
         assert_eq!(fetched.new_turn_number, 4);
+
+        Ok(())
+    }
+
+    #[test]
+    fn increment_new_turn_number_if_needed_increments_once() -> Result<()> {
+        let connection = establish_in_memory_connection()?;
+        super::upsert(
+            &connection,
+            &CurrentSession::new(Some(Uuid::new_v4()), "Civ VI", 12),
+        )?;
+
+        assert!(super::increment_new_turn_number_if_needed(&connection)?);
+        assert!(!super::increment_new_turn_number_if_needed(&connection)?);
+
+        let fetched = super::fetch(&connection)?.expect("current session exists");
+        assert_eq!(fetched.turn_number, 12);
+        assert_eq!(fetched.new_turn_number, 13);
+        assert!(fetched.has_new_turn());
 
         Ok(())
     }

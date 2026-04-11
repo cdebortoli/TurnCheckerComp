@@ -113,7 +113,11 @@ impl MainContentView {
                 }
             }
             ContentMode::Comments => {
-                self.comments_view.show(ui, theme);
+                self.ensure_comment_slots();
+                let action = self.comments_view.show(ui, theme, &mut self.comments);
+                if let Some(action) = action {
+                    self.handle_comments_action(action);
+                }
             }
         }
     }

@@ -1,7 +1,7 @@
 use eframe::egui::{self, RichText};
 use egui::Color32;
 
-use super::helpers::{find_tag_by_uuid, show_tag_capsule};
+use super::helpers::{find_tag_by_uuid, show_sent_status_icon, show_tag_capsule};
 use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType, Tag};
 use crate::ui::content::toggle_button::toggle;
@@ -97,7 +97,7 @@ impl CheckCardsView {
                 ui.allocate_exact_size(egui::vec2(4.0, 1.0), egui::Sense::hover());
             self.show_check_card_title(ui, theme, tags, check);
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                self.show_sent_status_icon(ui, theme, check);
+                show_sent_status_icon(ui, theme, check.is_sent);
                 self.show_check_toggle(ui, selected_checked, theme, display_mode);
                 self.show_mandatory_indicator(ui, theme, check);
             });
@@ -170,54 +170,6 @@ impl CheckCardsView {
                 ui.add(toggle(selected_checked, theme));
             }
             CheckCardDisplayMode::ReadOnly => {}
-        }
-    }
-
-    fn show_sent_status_icon(&self, ui: &mut egui::Ui, theme: &Theme, check: &Check) {
-        let circle_color = if check.is_sent {
-            eframe::egui::Color32::from_rgba_premultiplied(48, 209, 88, 220)
-        } else {
-            eframe::egui::Color32::from_rgba_premultiplied(255, 69, 58, 220)
-        };
-        let icon_color = theme.text_primary;
-        let size = 20.0;
-        let stroke = egui::Stroke::new(2.0, icon_color);
-        let (rect, _) = ui.allocate_exact_size(egui::vec2(size, size), egui::Sense::hover());
-        let center = rect.center();
-        let radius = size * 0.5;
-
-        ui.painter().circle_filled(center, radius, circle_color);
-
-        if check.is_sent {
-            ui.painter().line_segment(
-                [
-                    egui::pos2(rect.left() + 5.5, rect.center().y + 1.5),
-                    egui::pos2(rect.left() + 9.5, rect.bottom() - 6.0),
-                ],
-                stroke,
-            );
-            ui.painter().line_segment(
-                [
-                    egui::pos2(rect.left() + 9.5, rect.bottom() - 6.0),
-                    egui::pos2(rect.right() - 5.0, rect.top() + 6.0),
-                ],
-                stroke,
-            );
-        } else {
-            ui.painter().line_segment(
-                [
-                    egui::pos2(rect.left() + 6.0, rect.top() + 6.0),
-                    egui::pos2(rect.right() - 6.0, rect.bottom() - 6.0),
-                ],
-                stroke,
-            );
-            ui.painter().line_segment(
-                [
-                    egui::pos2(rect.left() + 6.0, rect.bottom() - 6.0),
-                    egui::pos2(rect.right() - 6.0, rect.top() + 6.0),
-                ],
-                stroke,
-            );
         }
     }
 }

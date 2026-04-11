@@ -1,4 +1,5 @@
-use crate::models::{Check, Tag};
+use crate::models::{Check, Comment, CommentType, Tag};
+use crate::ui::theme::Theme;
 use eframe::egui;
 use uuid::Uuid;
 
@@ -6,6 +7,33 @@ pub(super) fn apply_check_status_update(mut check: Check, is_checked: bool) -> C
     check.is_checked = is_checked;
     check.is_sent = false;
     check
+}
+
+pub(super) fn apply_comment_content_update(
+    mut comment: Comment,
+    content: impl Into<String>,
+) -> Comment {
+    comment.content = content.into();
+    comment.is_sent = false;
+    comment
+}
+
+pub(super) fn find_comment_by_type(
+    comments: &[Comment],
+    comment_type: CommentType,
+) -> Option<&Comment> {
+    comments
+        .iter()
+        .find(|comment| comment.comment_type == comment_type)
+}
+
+pub(super) fn find_comment_by_type_mut(
+    comments: &mut [Comment],
+    comment_type: CommentType,
+) -> Option<&mut Comment> {
+    comments
+        .iter_mut()
+        .find(|comment| comment.comment_type == comment_type)
 }
 
 pub(super) fn find_tag_by_uuid(tags: &[Tag], tag_uuid: Option<Uuid>) -> Option<&Tag> {
@@ -31,6 +59,54 @@ pub(super) fn tag_fill_color(tag: &Tag) -> egui::Color32 {
 
 fn tag_text_color(tag: &Tag) -> egui::Color32 {
     parse_hex_color(&tag.text_color).unwrap_or(egui::Color32::WHITE)
+}
+
+pub(super) fn show_sent_status_icon(ui: &mut egui::Ui, theme: &Theme, is_sent: bool) {
+    let circle_color = if is_sent {
+        eframe::egui::Color32::from_rgba_premultiplied(48, 209, 88, 220)
+    } else {
+        eframe::egui::Color32::from_rgba_premultiplied(255, 69, 58, 220)
+    };
+    let icon_color = theme.text_primary;
+    let size = 20.0;
+    let stroke = egui::Stroke::new(2.0, icon_color);
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(size, size), egui::Sense::hover());
+    let center = rect.center();
+    let radius = size * 0.5;
+
+    ui.painter().circle_filled(center, radius, circle_color);
+
+    if is_sent {
+        ui.painter().line_segment(
+            [
+                egui::pos2(rect.left() + 5.5, rect.center().y + 1.5),
+                egui::pos2(rect.left() + 9.5, rect.bottom() - 6.0),
+            ],
+            stroke,
+        );
+        ui.painter().line_segment(
+            [
+                egui::pos2(rect.left() + 9.5, rect.bottom() - 6.0),
+                egui::pos2(rect.right() - 5.0, rect.top() + 6.0),
+            ],
+            stroke,
+        );
+    } else {
+        ui.painter().line_segment(
+            [
+                egui::pos2(rect.left() + 6.0, rect.top() + 6.0),
+                egui::pos2(rect.right() - 6.0, rect.bottom() - 6.0),
+            ],
+            stroke,
+        );
+        ui.painter().line_segment(
+            [
+                egui::pos2(rect.left() + 6.0, rect.bottom() - 6.0),
+                egui::pos2(rect.right() - 6.0, rect.top() + 6.0),
+            ],
+            stroke,
+        );
+    }
 }
 
 pub(super) fn show_tag_capsule(ui: &mut egui::Ui, tag: &Tag) {

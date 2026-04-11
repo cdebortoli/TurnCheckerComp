@@ -1,6 +1,6 @@
-use super::helpers::apply_check_status_update;
+use super::helpers::{apply_check_status_update, apply_comment_content_update};
 use super::{ContentMode, MainContentView};
-use crate::models::{Check, CurrentSession};
+use crate::models::{Check, Comment, CommentType, CurrentSession};
 use tokio::sync::watch;
 use uuid::Uuid;
 
@@ -28,6 +28,31 @@ fn local_status_update_marks_check_unsent() {
 
     assert!(updated.is_checked);
     assert!(!updated.is_sent);
+}
+
+#[test]
+fn local_comment_update_marks_comment_unsent() {
+    let mut comment = Comment::new(CommentType::Game, "Synced note");
+    comment.is_sent = true;
+
+    let updated = apply_comment_content_update(comment, "Edited note");
+
+    assert_eq!(updated.content, "Edited note");
+    assert!(!updated.is_sent);
+}
+
+#[test]
+fn ensure_comment_slots_adds_game_and_turn_placeholders() {
+    let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
+    let mut view = MainContentView::new(content_refresh_rx);
+
+    view.ensure_comment_slots();
+
+    assert_eq!(view.comments.len(), 2);
+    assert_eq!(view.comments[0].comment_type, CommentType::Game);
+    assert_eq!(view.comments[1].comment_type, CommentType::Turn);
+    assert!(view.comments.iter().all(|comment| comment.id == 0));
+    assert!(view.comments.iter().all(|comment| comment.is_sent));
 }
 
 #[test]

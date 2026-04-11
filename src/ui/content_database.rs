@@ -1,7 +1,11 @@
-use super::helpers::apply_check_status_update;
+use super::helpers::{
+    apply_check_status_update, apply_comment_content_update, find_comment_by_type_mut,
+};
 use super::{ContentMode, MainContentView};
 use crate::database;
-use crate::models::{check_source_type::CheckSourceType, Check, CurrentSession, Tag};
+use crate::models::{
+    check_source_type::CheckSourceType, Check, Comment, CommentType, CurrentSession, Tag,
+};
 
 impl MainContentView {
     // Update UI from http server updates
@@ -29,9 +33,11 @@ impl MainContentView {
         };
 
         match Self::load_content(source_filter) {
-            Ok((checks, tags, source_checks, current_session)) => {
+            Ok((checks, tags, comments, source_checks, current_session)) => {
                 self.checks = checks;
                 self.tags = tags;
+                self.comments = comments;
+                self.ensure_comment_slots();
                 self.source_checks = source_checks;
                 self.current_session = current_session;
                 self.try_finish_next_turn_wait();
@@ -44,10 +50,20 @@ impl MainContentView {
 
     fn load_content(
         source_filter: Option<CheckSourceType>,
-    ) -> Result<(Vec<Check>, Vec<Tag>, Vec<Check>, Option<CurrentSession>), String> {
+    ) -> Result<
+        (
+            Vec<Check>,
+            Vec<Tag>,
+            Vec<Comment>,
+            Vec<Check>,
+            Option<CurrentSession>,
+        ),
+        String,
+    > {
         let connection = database::establish_connection().map_err(|err| err.to_string())?;
         let checks = database::checks::fetch_all(&connection).map_err(|err| err.to_string())?;
         let tags = database::tags::fetch_all(&connection).map_err(|err| err.to_string())?;
+        let comments = database::comments::fetch_all(&connection).map_err(|err| err.to_string())?;
         let source_checks = match source_filter {
             Some(source) => database::checks::fetch_by_source(&connection, source)
                 .map_err(|err| err.to_string())?,
@@ -55,7 +71,7 @@ impl MainContentView {
         };
         let current_session =
             database::current_session::fetch(&connection).map_err(|err| err.to_string())?;
-        Ok((checks, tags, source_checks, current_session))
+        Ok((checks, tags, comments, source_checks, current_session))
     }
 
     pub(super) fn update_check_status(
@@ -68,6 +84,32 @@ impl MainContentView {
         database::checks::update(&connection, &check).map_err(|err| err.to_string())?;
         self.needs_reload = true;
         self.reload_checks_if_needed();
+        Ok(())
+    }
+
+    pub(super) fn update_comment_content(
+        &mut self,
+        comment_type: CommentType,
+        content: String,
+    ) -> Result<(), String> {
+        self.ensure_comment_slots();
+
+        let updated_comment = {
+            let comment = find_comment_by_type_mut(&mut self.comments, comment_type)
+                .ok_or_else(|| format!("Missing {:?} comment slot.", comment_type))?;
+            let updated = apply_comment_content_update(comment.clone(), content);
+            *comment = updated.clone();
+            updated
+        };
+
+        let connection = database::establish_connection().map_err(|err| err.to_string())?;
+        let id = database::comments::upsert(&connection, &updated_comment)
+            .map_err(|err| err.to_string())?;
+
+        if let Some(comment) = find_comment_by_type_mut(&mut self.comments, comment_type) {
+            comment.id = id;
+        }
+
         Ok(())
     }
 
@@ -89,5 +131,33 @@ impl MainContentView {
             .map_err(|err| err.to_string())?
             .len();
         Ok(checks + comments + tags)
+    }
+
+    pub(super) fn ensure_comment_slots(&mut self) {
+        self.ensure_comment_slot(CommentType::Game);
+        self.ensure_comment_slot(CommentType::Turn);
+        self.comments
+            .sort_by_key(|comment| comment_type_order(comment.comment_type.clone()));
+    }
+
+    fn ensure_comment_slot(&mut self, comment_type: CommentType) {
+        if self
+            .comments
+            .iter()
+            .any(|comment| comment.comment_type == comment_type)
+        {
+            return;
+        }
+
+        let mut comment = Comment::new(comment_type, "");
+        comment.is_sent = true;
+        self.comments.push(comment);
+    }
+}
+
+fn comment_type_order(comment_type: CommentType) -> u8 {
+    match comment_type {
+        CommentType::Game => 0,
+        CommentType::Turn => 1,
     }
 }

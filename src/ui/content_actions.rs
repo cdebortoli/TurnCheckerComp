@@ -1,4 +1,5 @@
 use super::checklist::ChecklistAction;
+use super::comments::CommentsAction;
 use super::new_check::NewCheckAction;
 use super::{ContentAction, ContentMode, MainContentView};
 
@@ -23,6 +24,18 @@ impl MainContentView {
                     self.error_message = Some(error);
                 }
             }
+        }
+    }
+
+    pub(super) fn handle_comments_action(&mut self, action: CommentsAction) {
+        match action {
+            CommentsAction::CommentChanged {
+                comment_type,
+                content,
+            } => match self.update_comment_content(comment_type, content) {
+                Ok(()) => self.error_message = None,
+                Err(error) => self.error_message = Some(error),
+            },
         }
     }
 

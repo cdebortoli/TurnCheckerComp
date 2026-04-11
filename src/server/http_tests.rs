@@ -9,9 +9,7 @@ use crate::server::dto::{SyncConnectRequest, SyncPushRequest};
 async fn json_rejection_includes_unknown_top_level_field() {
     let response = parse_json_request(
         "/sync/connect",
-        axum::Json::<SyncConnectRequest>::from_bytes(
-            br#"{"deviceId":"ios","unexpected":true}"#,
-        ),
+        axum::Json::<SyncConnectRequest>::from_bytes(br#"{"deviceId":"ios","unexpected":true}"#),
     )
     .unwrap_err();
 

@@ -52,8 +52,7 @@ fn pull_and_ack_round_trip_always_includes_current_session() -> Result<()> {
     assert_eq!(pulled_session.game_name, "Civ VI");
     assert_eq!(pulled_session.turn_number, 9);
 
-    let stored_session =
-        database::current_session::fetch(&connection)?.expect("session exists");
+    let stored_session = database::current_session::fetch(&connection)?.expect("session exists");
     assert_eq!(stored_session.game_name, "Civ VI");
     assert_eq!(stored_session.turn_number, 9);
 

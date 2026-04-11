@@ -11,8 +11,7 @@ use crate::models::{Check, CurrentSession};
 
 #[test]
 fn startup_state_detects_unsent_records() -> Result<()> {
-    let temp_dir =
-        std::env::temp_dir().join(format!("turn-checker-db-{}", uuid::Uuid::new_v4()));
+    let temp_dir = std::env::temp_dir().join(format!("turn-checker-db-{}", uuid::Uuid::new_v4()));
     std::fs::create_dir_all(&temp_dir)?;
     let db_path = temp_dir.join("startup.db");
 

@@ -24,10 +24,9 @@ impl MainContentView {
 
         if !current_session.has_new_turn() {
             let connection = database::establish_connection().map_err(|err| err.to_string())?;
-            let incremented = database::current_session::increment_new_turn_number_if_needed(
-                &connection,
-            )
-            .map_err(|err| err.to_string())?;
+            let incremented =
+                database::current_session::increment_new_turn_number_if_needed(&connection)
+                    .map_err(|err| err.to_string())?;
 
             if incremented {
                 if let Some(current_session) = self.current_session.as_mut() {

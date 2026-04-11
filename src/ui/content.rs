@@ -19,7 +19,7 @@ mod toggle_button;
 #[path = "content_toolbar.rs"]
 mod toolbar;
 
-use crate::models::{check_source_type::CheckSourceType, Check, CurrentSession, Tag};
+use crate::models::{check_source_type::CheckSourceType, Check, Comment, CurrentSession, Tag};
 use crate::ui::theme::Theme;
 use eframe::egui;
 use tokio::sync::watch;
@@ -35,6 +35,7 @@ pub struct MainContentView {
     checks: Vec<Check>,
     source_checks: Vec<Check>,
     tags: Vec<Tag>,
+    comments: Vec<Comment>,
     current_session: Option<CurrentSession>,
     checklist_view: ChecklistView,
     comments_view: CommentsView,
@@ -75,6 +76,7 @@ impl MainContentView {
             checks: Vec::new(),
             source_checks: Vec::new(),
             tags: Vec::new(),
+            comments: Vec::new(),
             current_session: None,
             checklist_view: ChecklistView::default(),
             comments_view: CommentsView::default(),
@@ -104,6 +106,7 @@ impl MainContentView {
         self.checks.clear();
         self.source_checks.clear();
         self.tags.clear();
+        self.comments.clear();
         self.current_session = None;
         self.checklist_view = ChecklistView::default();
         self.comments_view = CommentsView::default();

@@ -35,25 +35,13 @@ pub(super) struct SyncPullRequest {
     pub current_session: Option<CurrentSession>,
 }
 
-#[derive(Debug, Deserialize, Default)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(super) struct SyncPushRequest {
-    #[allow(dead_code)]
-    pub device_id: Option<String>,
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct SyncPullResponse {
     pub checks: Vec<Check>,
     pub comments: Vec<Comment>,
     pub tags: Vec<Tag>,
-    #[serde(default)]
     pub current_session: Option<CurrentSession>,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct SyncPushResponse {
-    pub checks_upserted: usize,
-    pub comments_upserted: usize,
-    pub tags_upserted: usize,
-    pub current_session_upserted: usize,
     pub server_time: DateTime<Utc>,
 }
 
@@ -77,13 +65,25 @@ pub(super) struct SyncAckResponse {
     pub server_time: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct SyncPullResponse {
+#[derive(Debug, Deserialize, Default)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(super) struct SyncPushRequest {
+    #[allow(dead_code)]
+    pub device_id: Option<String>,
     pub checks: Vec<Check>,
     pub comments: Vec<Comment>,
     pub tags: Vec<Tag>,
+    #[serde(default)]
     pub current_session: Option<CurrentSession>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct SyncPushResponse {
+    pub checks_upserted: usize,
+    pub comments_upserted: usize,
+    pub tags_upserted: usize,
+    pub current_session_upserted: usize,
     pub server_time: DateTime<Utc>,
 }
 

@@ -214,6 +214,12 @@ fn notify_content_changed(content_refresh_tx: &watch::Sender<u64>) {
     let _ = content_refresh_tx.send(next_version);
 }
 
+fn discover_local_ip() -> anyhow::Result<IpAddr> {
+    let socket = UdpSocket::bind("0.0.0.0:0")?;
+    socket.connect("8.8.8.8:80")?;
+    Ok(socket.local_addr()?.ip())
+}
+
 fn parse_json_request<T>(
     route: &'static str,
     request: Result<Json<T>, JsonRejection>,
@@ -254,12 +260,6 @@ where
     fn from(value: E) -> Self {
         Self(value.into())
     }
-}
-
-fn discover_local_ip() -> anyhow::Result<IpAddr> {
-    let socket = UdpSocket::bind("0.0.0.0:0")?;
-    socket.connect("8.8.8.8:80")?;
-    Ok(socket.local_addr()?.ip())
 }
 
 #[cfg(test)]

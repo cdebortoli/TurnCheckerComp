@@ -1,8 +1,5 @@
 // This file stores the paired device token and sends placeholder push notification requests.
-use std::{
-    env,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 
 use serde::Serialize;
 use serde_json::{Map, Value};

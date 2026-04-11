@@ -3,7 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use anyhow::Result;
-use rusqlite::{Connection, OptionalExtension};
+use rusqlite::Connection;
 
 use crate::database::checks;
 use crate::database::tags;
@@ -11,6 +11,12 @@ use crate::models::{check_source_type::CheckSourceType, Check, Tag};
 
 const INSERT_DEBUG_UNSENT_CHECK_ON_CREATE: bool = false;
 const INSERT_DEBUG_TAGS_ON_START: bool = false;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DatabaseStartupState {
+    Ready,
+    NeedsUserDecision { unsent_records: usize },
+}
 
 pub fn database_path() -> PathBuf {
     std::env::current_dir()
@@ -20,12 +26,6 @@ pub fn database_path() -> PathBuf {
 
 pub fn establish_connection() -> Result<Connection> {
     establish_connection_at(&database_path())
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DatabaseStartupState {
-    Ready,
-    NeedsUserDecision { unsent_records: usize },
 }
 
 pub fn establish_connection_at(path: &PathBuf) -> Result<Connection> {
@@ -47,24 +47,19 @@ pub fn establish_in_memory_connection() -> Result<Connection> {
     Ok(connection)
 }
 
-pub fn inspect_startup_state() -> Result<DatabaseStartupState> {
-    inspect_startup_state_at(database_path())
+fn wal_path(path: &std::path::Path) -> PathBuf {
+    PathBuf::from(format!("{}-wal", path.display()))
 }
 
-pub fn inspect_startup_state_at(path: PathBuf) -> Result<DatabaseStartupState> {
-    let file_exists = path.exists();
-    let connection = establish_connection_at(&path)?;
-    if !file_exists {
-        return Ok(DatabaseStartupState::Ready);
-    }
+fn shm_path(path: &std::path::Path) -> PathBuf {
+    PathBuf::from(format!("{}-shm", path.display()))
+}
 
-    let unsent_records = count_unsent_records(&connection)?;
-    if unsent_records > 0 {
-        Ok(DatabaseStartupState::NeedsUserDecision { unsent_records })
-    } else {
-        drop(connection);
-        reset_database_at(path)?;
-        Ok(DatabaseStartupState::Ready)
+fn remove_if_exists(path: &std::path::Path) -> Result<()> {
+    match fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error.into()),
     }
 }
 
@@ -134,32 +129,47 @@ fn configure_connection(connection: &Connection) -> Result<()> {
         ",
     )?;
 
-    //ensure_column_exists(connection, "checks", "tag_uuid", "TEXT")?;
-
     Ok(())
 }
 
-// fn ensure_column_exists(
-//     connection: &Connection,
-//     table_name: &str,
-//     column_name: &str,
-//     column_definition: &str,
-// ) -> Result<()> {
-//     let pragma = format!("PRAGMA table_info({table_name})");
-//     let mut statement = connection.prepare(&pragma)?;
-//     let columns = statement
-//         .query_map([], |row| row.get::<_, String>(1))?
-//         .collect::<rusqlite::Result<Vec<_>>>()?;
-//     drop(statement);
+pub fn inspect_startup_state() -> Result<DatabaseStartupState> {
+    inspect_startup_state_at(database_path())
+}
 
-//     if columns.iter().any(|column| column == column_name) {
-//         return Ok(());
-//     }
+pub fn inspect_startup_state_at(path: PathBuf) -> Result<DatabaseStartupState> {
+    let file_exists = path.exists();
+    let connection = establish_connection_at(&path)?;
+    if !file_exists {
+        return Ok(DatabaseStartupState::Ready);
+    }
 
-//     let alter = format!("ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}");
-//     connection.execute(&alter, [])?;
-//     Ok(())
-// }
+    let unsent_records = count_unsent_records(&connection)?;
+    if unsent_records > 0 {
+        Ok(DatabaseStartupState::NeedsUserDecision { unsent_records })
+    } else {
+        drop(connection);
+        reset_database_at(path)?;
+        Ok(DatabaseStartupState::Ready)
+    }
+}
+
+fn count_unsent_records(connection: &Connection) -> Result<usize> {
+    let checks: i64 =
+        connection.query_row("SELECT COUNT(*) FROM checks WHERE is_sent = 0", [], |row| {
+            row.get(0)
+        })?;
+    let comments: i64 = connection.query_row(
+        "SELECT COUNT(*) FROM comments WHERE is_sent = 0",
+        [],
+        |row| row.get(0),
+    )?;
+    let tags: i64 =
+        connection.query_row("SELECT COUNT(*) FROM tags WHERE is_sent = 0", [], |row| {
+            row.get(0)
+        })?;
+
+    Ok((checks + comments + tags) as usize)
+}
 
 fn maybe_insert_debug_unsent_check(connection: &Connection, is_new_database: bool) -> Result<()> {
     if INSERT_DEBUG_UNSENT_CHECK_ON_CREATE && is_new_database {
@@ -197,40 +207,6 @@ fn insert_debug_unsent_check(connection: &Connection) -> Result<()> {
     check.is_sent = false;
     checks::insert(connection, &check)?;
     Ok(())
-}
-
-fn count_unsent_records(connection: &Connection) -> Result<usize> {
-    let checks: i64 =
-        connection.query_row("SELECT COUNT(*) FROM checks WHERE is_sent = 0", [], |row| {
-            row.get(0)
-        })?;
-    let comments: i64 = connection.query_row(
-        "SELECT COUNT(*) FROM comments WHERE is_sent = 0",
-        [],
-        |row| row.get(0),
-    )?;
-    let tags: i64 =
-        connection.query_row("SELECT COUNT(*) FROM tags WHERE is_sent = 0", [], |row| {
-            row.get(0)
-        })?;
-
-    Ok((checks + comments + tags) as usize)
-}
-
-fn wal_path(path: &std::path::Path) -> PathBuf {
-    PathBuf::from(format!("{}-wal", path.display()))
-}
-
-fn shm_path(path: &std::path::Path) -> PathBuf {
-    PathBuf::from(format!("{}-shm", path.display()))
-}
-
-fn remove_if_exists(path: &std::path::Path) -> Result<()> {
-    match fs::remove_file(path) {
-        Ok(()) => Ok(()),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(error.into()),
-    }
 }
 
 #[cfg(test)]

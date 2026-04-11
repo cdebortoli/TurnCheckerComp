@@ -37,18 +37,25 @@ impl MainContentView {
             .collapsible(false)
             .resizable(false)
             .show(&ctx, |ui| {
-                ui.label(
-                    RichText::new(format!(
-                        "The database contains {unsent_checks} unsent check(s)."
-                    ))
-                    .color(theme.text_primary),
-                );
-                ui.label(
-                    RichText::new(
-                        "Restarting will delete and recreate the database, then return to the pairing screen.",
-                    )
-                    .color(theme.text_muted),
-                );
+
+                if unsent_checks > 0 {
+                  ui.label(
+                      RichText::new(format!(
+                          "The database contains {unsent_checks} unsent check(s)."
+                      ))
+                      .color(theme.text_primary),
+                  );
+                  ui.label(
+                      RichText::new(
+                          "Restarting will delete and recreate the database, then return to the pairing screen.",
+                      )
+                      .color(theme.text_muted),
+                  );
+                } else {
+                  ui.label(RichText::new("Restarting will delete and recreate the database, then return to the pairing screen.")
+                    .color(theme.text_primary));
+                }
+
                 ui.add_space(theme.spacing_md);
 
                 ui.horizontal(|ui| {

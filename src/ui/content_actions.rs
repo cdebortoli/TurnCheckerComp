@@ -5,7 +5,6 @@ use super::{ContentAction, ContentMode, MainContentView};
 impl MainContentView {
     pub(super) fn handle_restart_click(&mut self) -> Option<ContentAction> {
         match self.count_unsent_records() {
-            Ok(0) => Some(ContentAction::RestartRequested),
             Ok(unsent_records) => {
                 self.restart_confirmation_unsent_checks = Some(unsent_records);
                 None

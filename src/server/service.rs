@@ -74,12 +74,24 @@ impl SyncService {
         }
         database::tags::delete_sent_missing_uuids(&connection, &tag_uuids)?;
 
-        let current_session_upserted = if let Some(current_session) = current_session {
-            database::current_session::upsert(&connection, &current_session)?;
-            1
-        } else {
-            0
-        };
+        let mut current_session_upserted = 0;
+        if let Some(current_session) = current_session {
+            let database_current_session =
+                database::current_session::fetch(&connection).unwrap_or(None);
+            match database_current_session {
+                Some(db_current_session) => {
+                    // Don't update if pushed by ios app while new turn still not processed by ios app
+                    if current_session.turn_number >= db_current_session.new_turn_number {
+                        database::current_session::upsert(&connection, &current_session)?;
+                        current_session_upserted = 1;
+                    }
+                }
+                None => {
+                    database::current_session::upsert(&connection, &current_session)?;
+                    current_session_upserted = 1;
+                }
+            };
+        }
 
         Ok(SyncPushResponse {
             checks_upserted,

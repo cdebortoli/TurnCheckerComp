@@ -1,4 +1,5 @@
-use super::{apply_check_status_update, ContentMode, MainContentView};
+use super::helpers::apply_check_status_update;
+use super::{ContentMode, MainContentView};
 use crate::models::{Check, CurrentSession};
 use tokio::sync::watch;
 use uuid::Uuid;

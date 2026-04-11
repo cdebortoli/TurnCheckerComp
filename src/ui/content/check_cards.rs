@@ -1,7 +1,7 @@
 use eframe::egui::{self, RichText};
 use egui::Color32;
 
-use super::{find_tag_by_uuid, show_tag_capsule};
+use super::helpers::{find_tag_by_uuid, show_tag_capsule};
 use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType, Tag};
 use crate::ui::content::toggle_button::toggle;

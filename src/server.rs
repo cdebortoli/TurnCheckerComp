@@ -151,7 +151,7 @@ mod tests {
                 checks: vec![],
                 comments: vec![],
                 tags: vec![],
-                current_session: Some(CurrentSession::new(Some(stored_game_uuid), "Other Game", 4)),
+                current_session: Some(CurrentSession::new(Some(Uuid::new_v4()), "Other Game", 4)),
             })
             .expect_err("push should fail on mismatch");
         assert!(error.to_string().contains("game uuid mismatch"));

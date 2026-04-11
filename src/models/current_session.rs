@@ -10,6 +10,8 @@ pub struct CurrentSession {
     pub game_uuid: Option<Uuid>,
     pub game_name: String,
     pub turn_number: i32,
+    #[serde(default)]
+    pub new_turn_number: i32,
 }
 
 impl CurrentSession {
@@ -19,7 +21,12 @@ impl CurrentSession {
             game_uuid,
             game_name: game_name.into(),
             turn_number,
+            new_turn_number: turn_number,
         }
+    }
+
+    pub fn has_new_turn(&self) -> bool {
+        self.new_turn_number > self.turn_number
     }
 }
 

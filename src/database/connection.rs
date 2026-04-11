@@ -123,7 +123,8 @@ fn configure_connection(connection: &Connection) -> Result<()> {
             id INTEGER PRIMARY KEY CHECK (id = 1),
             game_uuid TEXT,
             game_name TEXT NOT NULL,
-            turn_number INTEGER NOT NULL
+            turn_number INTEGER NOT NULL,
+            new_turn_number INTEGER NOT NULL
         );
 
         CREATE INDEX IF NOT EXISTS idx_tags_uuid ON tags(uuid);

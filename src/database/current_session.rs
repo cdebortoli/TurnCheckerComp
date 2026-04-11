@@ -8,17 +8,19 @@ const SINGLETON_ID: i64 = 1;
 
 pub fn upsert(connection: &Connection, session: &CurrentSession) -> Result<i64> {
     connection.execute(
-        "INSERT INTO current_session (id, game_uuid, game_name, turn_number)
-         VALUES (?1, ?2, ?3, ?4)
+        "INSERT INTO current_session (id, game_uuid, game_name, turn_number, new_turn_number)
+         VALUES (?1, ?2, ?3, ?4, ?5)
          ON CONFLICT(id) DO UPDATE SET
              game_uuid = excluded.game_uuid,
              game_name = excluded.game_name,
-             turn_number = excluded.turn_number",
+             turn_number = excluded.turn_number,
+             new_turn_number = excluded.new_turn_number",
         params![
             SINGLETON_ID,
             session.game_uuid.map(|uuid| uuid.to_string()),
             session.game_name,
             session.turn_number,
+            session.new_turn_number,
         ],
     )?;
 
@@ -27,7 +29,7 @@ pub fn upsert(connection: &Connection, session: &CurrentSession) -> Result<i64> 
 
 pub fn fetch(connection: &Connection) -> Result<Option<CurrentSession>> {
     let mut statement = connection.prepare(
-        "SELECT id, game_uuid, game_name, turn_number
+        "SELECT id, game_uuid, game_name, turn_number, new_turn_number
          FROM current_session
          WHERE id = ?1",
     )?;
@@ -77,6 +79,7 @@ fn row_to_current_session(row: &Row<'_>) -> rusqlite::Result<CurrentSession> {
         game_uuid: game_uuid.map(parse_uuid),
         game_name: row.get(2)?,
         turn_number: row.get(3)?,
+        new_turn_number: row.get(4)?,
     })
 }
 
@@ -106,9 +109,11 @@ mod tests {
         assert_eq!(fetched.game_uuid, Some(game_uuid));
         assert_eq!(fetched.game_name, "Civ VI");
         assert_eq!(fetched.turn_number, 12);
+        assert_eq!(fetched.new_turn_number, 12);
 
         session.game_name = "Civ VII".to_string();
         session.turn_number = 3;
+        session.new_turn_number = 4;
         super::upsert(&connection, &session)?;
 
         let fetched = super::fetch(&connection)?.expect("current session exists");
@@ -116,6 +121,7 @@ mod tests {
         assert_eq!(fetched.game_uuid, Some(game_uuid));
         assert_eq!(fetched.game_name, "Civ VII");
         assert_eq!(fetched.turn_number, 3);
+        assert_eq!(fetched.new_turn_number, 4);
 
         Ok(())
     }

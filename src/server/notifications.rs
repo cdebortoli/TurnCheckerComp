@@ -43,18 +43,18 @@ impl PushNotificationClient {
     }
 
     pub fn set_device_token(&self, device_token: Option<String>) {
-        let mut stored_device_token = self
-            .device_token
-            .write()
-            .expect("device token lock should not be poisoned"); // No except
+        let mut stored_device_token = match self.device_token.write() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
         *stored_device_token = normalize_optional_string(device_token);
     }
 
     pub fn device_token(&self) -> Option<String> {
-        self.device_token
-            .read()
-            .expect("device token lock should not be poisoned") // No excpect
-            .clone()
+        match self.device_token.read() {
+            Ok(guard) => guard.clone(),
+            Err(poisoned) => poisoned.into_inner().clone(),
+        }
     }
 
     pub async fn send_new_turn_notification(&self) -> anyhow::Result<()> {

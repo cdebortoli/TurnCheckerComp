@@ -31,18 +31,6 @@ impl SyncService {
         })
     }
 
-    pub(super) fn validate_received_session(
-        &self,
-        received_game_session: &Option<CurrentSession>,
-    ) -> anyhow::Result<()> {
-        let connection = database::establish_connection_at(&self.database_path)?;
-        database::current_session::validate_session_match(&connection, received_game_session)
-    }
-
-    pub(super) fn validate_push_request(&self, request: &SyncPushRequest) -> anyhow::Result<()> {
-        self.validate_received_session(&request.current_session)
-    }
-
     pub(super) fn push(&self, request: SyncPushRequest) -> anyhow::Result<SyncPushResponse> {
         self.validate_push_request(&request)?;
 
@@ -114,5 +102,17 @@ impl SyncService {
             tags_marked_sent: database::tags::mark_sent_by_uuids(&connection, &request.tags)?,
             server_time: Utc::now(),
         })
+    }
+
+    pub(super) fn validate_received_session(
+        &self,
+        received_game_session: &Option<CurrentSession>,
+    ) -> anyhow::Result<()> {
+        let connection = database::establish_connection_at(&self.database_path)?;
+        database::current_session::validate_session_match(&connection, received_game_session)
+    }
+
+    pub(super) fn validate_push_request(&self, request: &SyncPushRequest) -> anyhow::Result<()> {
+        self.validate_received_session(&request.current_session)
     }
 }

@@ -2,4 +2,5 @@
 /refs_for_ai
 *.db
 .DS_Store
+/plans
 

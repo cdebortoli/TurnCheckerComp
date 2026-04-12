@@ -20,3 +20,13 @@ fn empty_device_token_clears_the_stored_value() {
 
     assert_eq!(client.device_token(), None);
 }
+
+#[test]
+fn client_uses_the_expected_environment_for_this_build() {
+    let client = PushNotificationClient::new_with_url(PUSH_NOTIFICATION_URL.to_string());
+
+    assert_eq!(
+        client.environment,
+        super::default_push_notification_environment()
+    );
+}

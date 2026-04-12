@@ -38,7 +38,7 @@ impl PushNotificationClient {
             http_client: reqwest::Client::new(),
             push_notification_url: Some(push_notification_url),
             device_token: Arc::new(RwLock::new(None)),
-            environment: PushNotificationEnvironment::Sandbox,
+            environment: default_push_notification_environment(),
         }
     }
 
@@ -101,6 +101,14 @@ struct PushNotifRequest<'a> {
     body: &'a str,
     data: Map<String, Value>,
     environment: &'a PushNotificationEnvironment,
+}
+
+fn default_push_notification_environment() -> PushNotificationEnvironment {
+    if option_env!("GITHUB_ACTIONS") == Some("true") || !cfg!(debug_assertions) {
+        PushNotificationEnvironment::Production
+    } else {
+        PushNotificationEnvironment::Sandbox
+    }
 }
 
 fn normalize_optional_string(value: Option<String>) -> Option<String> {

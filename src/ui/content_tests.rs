@@ -42,20 +42,6 @@ fn local_comment_update_marks_comment_unsent() {
 }
 
 #[test]
-fn ensure_comment_slots_adds_game_and_turn_placeholders() {
-    let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
-    let mut view = MainContentView::new(content_refresh_rx);
-
-    view.ensure_comment_slots();
-
-    assert_eq!(view.comments.len(), 2);
-    assert_eq!(view.comments[0].comment_type, CommentType::Game);
-    assert_eq!(view.comments[1].comment_type, CommentType::Turn);
-    assert!(view.comments.iter().all(|comment| comment.id == 0));
-    assert!(view.comments.iter().all(|comment| comment.is_sent));
-}
-
-#[test]
 fn next_turn_wait_unlocks_after_turn_increase_for_same_game() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
     let game_uuid = Uuid::new_v4();

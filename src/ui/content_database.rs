@@ -37,7 +37,6 @@ impl MainContentView {
                 self.checks = checks;
                 self.tags = tags;
                 self.comments = comments;
-                self.ensure_comment_slots();
                 self.source_checks = source_checks;
                 self.current_session = current_session;
                 self.try_finish_next_turn_wait();
@@ -92,8 +91,6 @@ impl MainContentView {
         comment_type: CommentType,
         content: String,
     ) -> Result<(), String> {
-        self.ensure_comment_slots();
-
         let updated_comment = {
             let comment = find_comment_by_type_mut(&mut self.comments, comment_type)
                 .ok_or_else(|| format!("Missing {:?} comment slot.", comment_type))?;
@@ -131,27 +128,6 @@ impl MainContentView {
             .map_err(|err| err.to_string())?
             .len();
         Ok(checks + comments + tags)
-    }
-
-    pub(super) fn ensure_comment_slots(&mut self) {
-        self.ensure_comment_slot(CommentType::Game);
-        self.ensure_comment_slot(CommentType::Turn);
-        self.comments
-            .sort_by_key(|comment| comment_type_order(comment.comment_type.clone()));
-    }
-
-    fn ensure_comment_slot(&mut self, comment_type: CommentType) {
-        if self
-            .comments
-            .iter()
-            .any(|comment| comment.comment_type == comment_type)
-        {
-            return;
-        }
-
-        let mut comment = Comment::new(comment_type, "");
-        comment.is_sent = true;
-        self.comments.push(comment);
     }
 }
 

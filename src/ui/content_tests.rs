@@ -42,6 +42,32 @@ fn local_comment_update_marks_comment_unsent() {
 }
 
 #[test]
+fn next_turn_click_opens_confirmation_when_session_is_available() {
+    let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
+    let mut view = MainContentView::new(content_refresh_rx);
+    view.current_session = Some(CurrentSession::new(Some(Uuid::new_v4()), "Civ VI", 5));
+
+    view.handle_new_turn_click();
+
+    assert!(view.new_turn_confirmation_open);
+    assert!(view.error_message.is_none());
+}
+
+#[test]
+fn next_turn_click_sets_error_when_session_is_missing() {
+    let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
+    let mut view = MainContentView::new(content_refresh_rx);
+
+    view.handle_new_turn_click();
+
+    assert!(!view.new_turn_confirmation_open);
+    assert_eq!(
+        view.error_message.as_deref(),
+        Some("No current session is available yet.")
+    );
+}
+
+#[test]
 fn next_turn_wait_unlocks_after_turn_increase_for_same_game() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
     let game_uuid = Uuid::new_v4();

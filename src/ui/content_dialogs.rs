@@ -13,12 +13,54 @@ impl MainContentView {
             .fill(theme.bg_primary)
             .inner_margin(theme.spacing_lg)
             .show(ui, |ui| {
-                self.show_top_bar(ui, theme, action);
+                self.show_top_bar(ui, theme);
                 ui.add_space(theme.spacing_md);
                 self.show_error_message(ui, theme);
                 self.show_active_content(ui, theme);
             });
+        self.show_new_turn_confirmation(ui, theme, action);
         self.show_restart_confirmation(ui, theme, action);
+    }
+
+    fn show_new_turn_confirmation(
+        &mut self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        action: &mut Option<ContentAction>,
+    ) {
+        if !self.new_turn_confirmation_open {
+            return;
+        }
+
+        let ctx = ui.ctx().clone();
+        egui::Window::new("New turn")
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .collapsible(false)
+            .resizable(false)
+            .show(&ctx, |ui| {
+                ui.label(
+                    RichText::new(
+                        "Sending a new-turn notification will switch this screen to waiting mode until the next turn arrives.",
+                    )
+                    .color(theme.text_primary),
+                );
+
+                ui.add_space(theme.spacing_md);
+
+                ui.horizontal(|ui| {
+                    if ui.button("Cancel").clicked() {
+                        self.new_turn_confirmation_open = false;
+                    }
+
+                    if ui.button("Next turn").clicked() {
+                        self.new_turn_confirmation_open = false;
+                        match self.request_new_turn() {
+                            Ok(()) => *action = Some(ContentAction::NewTurnNotifRequested),
+                            Err(error) => self.error_message = Some(error),
+                        }
+                    }
+                });
+            });
     }
 
     fn show_restart_confirmation(

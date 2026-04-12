@@ -1,18 +1,29 @@
 use super::checklist::ChecklistAction;
 use super::comments::CommentsAction;
 use super::new_check::NewCheckAction;
-use super::{ContentAction, ContentMode, MainContentView};
+use super::{ContentMode, MainContentView};
 
 impl MainContentView {
-    pub(super) fn handle_restart_click(&mut self) -> Option<ContentAction> {
+    pub(super) fn handle_new_turn_click(&mut self) {
+        self.restart_confirmation_unsent_checks = None;
+
+        if self.current_session.is_none() {
+            self.error_message = Some("No current session is available yet.".to_string());
+            return;
+        }
+
+        self.new_turn_confirmation_open = true;
+    }
+
+    pub(super) fn handle_restart_click(&mut self) {
+        self.new_turn_confirmation_open = false;
+
         match self.count_unsent_records() {
             Ok(unsent_records) => {
                 self.restart_confirmation_unsent_checks = Some(unsent_records);
-                None
             }
             Err(error) => {
                 self.error_message = Some(error);
-                None
             }
         }
     }

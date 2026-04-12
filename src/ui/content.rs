@@ -44,6 +44,7 @@ pub struct MainContentView {
     source_checks_view: SourceChecksView,
     source_checks_config: Option<SourceChecksConfig>,
     error_message: Option<String>,
+    new_turn_confirmation_open: bool,
     restart_confirmation_unsent_checks: Option<usize>,
     needs_reload: bool,
     content_refresh_rx: watch::Receiver<u64>,
@@ -85,6 +86,7 @@ impl MainContentView {
             source_checks_view: SourceChecksView::default(),
             source_checks_config: None,
             error_message: None,
+            new_turn_confirmation_open: false,
             restart_confirmation_unsent_checks: None,
             needs_reload: true,
             content_refresh_rx,
@@ -115,6 +117,7 @@ impl MainContentView {
         self.source_checks_view = SourceChecksView::default();
         self.source_checks_config = None;
         self.error_message = None;
+        self.new_turn_confirmation_open = false;
         self.restart_confirmation_unsent_checks = None;
         self.needs_reload = true;
     }

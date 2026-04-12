@@ -28,9 +28,9 @@ impl MainContentView {
         theme: &Theme,
         action: &mut Option<ContentAction>,
     ) {
-        if !self.new_turn_confirmation_open {
+        let Some(unchecked_mandatory_checks) = self.new_turn_confirmation_open else {
             return;
-        }
+        };
 
         let ctx = ui.ctx().clone();
         egui::Window::new("New turn")
@@ -38,22 +38,37 @@ impl MainContentView {
             .collapsible(false)
             .resizable(false)
             .show(&ctx, |ui| {
-                ui.label(
-                    RichText::new(
-                        "Sending a new-turn notification will switch this screen to waiting mode until the next turn arrives.",
-                    )
-                    .color(theme.text_primary),
-                );
+                if unchecked_mandatory_checks > 0 {
+                    ui.label(
+                        RichText::new(format!(
+                            "You still have {unchecked_mandatory_checks} mandatory current-turn check(s) to complete."
+                        ))
+                        .color(theme.text_primary),
+                    );
+                    ui.label(
+                        RichText::new(
+                            "The next-turn notification cannot be sent until all mandatory current-turn checks are checked.",
+                        )
+                        .color(theme.text_muted),
+                    );
+                } else {
+                    ui.label(
+                        RichText::new(
+                            "Sending a new-turn notification will switch this screen to waiting mode until the next turn arrives.",
+                        )
+                        .color(theme.text_primary),
+                    );
+                }
 
                 ui.add_space(theme.spacing_md);
 
                 ui.horizontal(|ui| {
                     if ui.button("Cancel").clicked() {
-                        self.new_turn_confirmation_open = false;
+                        self.new_turn_confirmation_open = None;
                     }
 
-                    if ui.button("Next turn").clicked() {
-                        self.new_turn_confirmation_open = false;
+                    if unchecked_mandatory_checks == 0 && ui.button("Next turn").clicked() {
+                        self.new_turn_confirmation_open = None;
                         match self.request_new_turn() {
                             Ok(()) => *action = Some(ContentAction::NewTurnNotifRequested),
                             Err(error) => self.error_message = Some(error),

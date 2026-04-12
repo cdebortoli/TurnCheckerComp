@@ -8,15 +8,17 @@ impl MainContentView {
         self.restart_confirmation_unsent_checks = None;
 
         if self.current_session.is_none() {
+            self.new_turn_confirmation_open = None;
             self.error_message = Some("No current session is available yet.".to_string());
             return;
         }
 
-        self.new_turn_confirmation_open = true;
+        self.error_message = None;
+        self.new_turn_confirmation_open = Some(self.count_unchecked_mandatory_turn_checks());
     }
 
     pub(super) fn handle_restart_click(&mut self) {
-        self.new_turn_confirmation_open = false;
+        self.new_turn_confirmation_open = None;
 
         match self.count_unsent_records() {
             Ok(unsent_records) => {
@@ -68,5 +70,16 @@ impl MainContentView {
                 self.error_message = Some(error);
             }
         }
+    }
+
+    fn count_unchecked_mandatory_turn_checks(&self) -> usize {
+        self.checks
+            .iter()
+            .filter(|check| {
+                check.source == crate::models::check_source_type::CheckSourceType::Turn
+                    && check.is_mandatory
+                    && !check.is_checked
+            })
+            .count()
     }
 }

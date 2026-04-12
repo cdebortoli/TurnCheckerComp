@@ -1,6 +1,6 @@
 use super::helpers::{apply_check_status_update, apply_comment_content_update};
 use super::{ContentMode, MainContentView};
-use crate::models::{Check, Comment, CommentType, CurrentSession};
+use crate::models::{check_source_type::CheckSourceType, Check, Comment, CommentType, CurrentSession};
 use tokio::sync::watch;
 use uuid::Uuid;
 
@@ -49,8 +49,34 @@ fn next_turn_click_opens_confirmation_when_session_is_available() {
 
     view.handle_new_turn_click();
 
-    assert!(view.new_turn_confirmation_open);
+    assert_eq!(view.new_turn_confirmation_open, Some(0));
     assert!(view.error_message.is_none());
+}
+
+#[test]
+fn next_turn_click_counts_unchecked_mandatory_turn_checks() {
+    let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
+    let mut view = MainContentView::new(content_refresh_rx);
+    view.current_session = Some(CurrentSession::new(Some(Uuid::new_v4()), "Civ VI", 5));
+
+    let mut unchecked_turn = Check::new("Scout");
+    unchecked_turn.source = CheckSourceType::Turn;
+    unchecked_turn.is_mandatory = true;
+
+    let mut checked_turn = Check::new("City");
+    checked_turn.source = CheckSourceType::Turn;
+    checked_turn.is_mandatory = true;
+    checked_turn.is_checked = true;
+
+    let mut unchecked_global = Check::new("Global");
+    unchecked_global.source = CheckSourceType::GlobalGame;
+    unchecked_global.is_mandatory = true;
+
+    view.checks = vec![unchecked_turn, checked_turn, unchecked_global];
+
+    view.handle_new_turn_click();
+
+    assert_eq!(view.new_turn_confirmation_open, Some(1));
 }
 
 #[test]
@@ -60,7 +86,7 @@ fn next_turn_click_sets_error_when_session_is_missing() {
 
     view.handle_new_turn_click();
 
-    assert!(!view.new_turn_confirmation_open);
+    assert_eq!(view.new_turn_confirmation_open, None);
     assert_eq!(
         view.error_message.as_deref(),
         Some("No current session is available yet.")

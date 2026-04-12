@@ -18,6 +18,8 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Build release binary
+        env:
+          TURN_CHECKER_PUSH_BEARER_TOKEN: ${{ secrets.TURN_CHECKER_PUSH_BEARER_TOKEN }}
         run: cargo build --release
 
       - name: Prepare Windows artifact bundle

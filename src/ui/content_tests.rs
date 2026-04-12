@@ -1,6 +1,8 @@
 use super::helpers::{apply_check_status_update, apply_comment_content_update};
 use super::{ContentMode, MainContentView};
-use crate::models::{check_source_type::CheckSourceType, Check, Comment, CommentType, CurrentSession};
+use crate::models::{
+    check_source_type::CheckSourceType, Check, Comment, CommentType, CurrentSession,
+};
 use tokio::sync::watch;
 use uuid::Uuid;
 

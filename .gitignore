@@ -3,4 +3,5 @@
 *.db
 .DS_Store
 /plans
+.turn_checker_push_bearer_token
 

@@ -13,6 +13,8 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.0
 
       - name: Cache Rust build artifacts
         uses: Swatinem/rust-cache@v2
@@ -20,11 +22,19 @@ jobs:
       - name: Build release binary
         env:
           TURN_CHECKER_PUSH_BEARER_TOKEN: ${{ secrets.TURN_CHECKER_PUSH_BEARER_TOKEN }}
-        run: cargo build --release
+        run: cargo build --release --locked
+
+      - name: Package macOS archive
+        run: |
+          mkdir -p dist/macos
+          cp target/release/turn_checker_comp dist/macos/
+          cp target/release/graphics.toml dist/macos/
+          cp target/release/parameters.txt dist/macos/
+          ditto -c -k --sequesterRsrc --keepParent dist/macos turn_checker_comp-macos.zip
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: turn_checker_comp-macos
-          path: target/release/turn_checker_comp
+          path: turn_checker_comp-macos.zip
           if-no-files-found: error

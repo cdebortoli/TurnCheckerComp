@@ -13,6 +13,8 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.0
 
       - name: Cache Rust build artifacts
         uses: Swatinem/rust-cache@v2
@@ -20,7 +22,7 @@ jobs:
       - name: Build release binary
         env:
           TURN_CHECKER_PUSH_BEARER_TOKEN: ${{ secrets.TURN_CHECKER_PUSH_BEARER_TOKEN }}
-        run: cargo build --release
+        run: cargo build --release --locked
 
       - name: Prepare Windows artifact bundle
         shell: pwsh
@@ -29,10 +31,11 @@ jobs:
           Copy-Item target/release/turn_checker_comp.exe dist/windows/
           Copy-Item target/release/graphics.toml dist/windows/
           Copy-Item target/release/parameters.txt dist/windows/
+          Compress-Archive -Path dist/windows/* -DestinationPath turn_checker_comp-windows.zip -Force
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: turn_checker_comp-windows
-          path: dist/windows
+          path: turn_checker_comp-windows.zip
           if-no-files-found: error

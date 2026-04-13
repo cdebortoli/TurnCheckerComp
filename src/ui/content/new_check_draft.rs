@@ -1,3 +1,4 @@
+use crate::i18n::{I18n, I18nValue};
 use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType};
 use uuid::Uuid;
@@ -30,24 +31,30 @@ impl Default for NewCheckDraft {
 }
 
 impl NewCheckDraft {
-    pub(super) fn to_check(&self) -> Result<Check, String> {
+    pub(super) fn to_check(&self, i18n: &I18n) -> Result<Check, String> {
         let name = self.name.trim();
         if name.is_empty() {
-            return Err("Name is required.".to_string());
+            return Err(i18n.t("validation-name-required"));
         }
 
+        let repeat_field_name = i18n.t("field-repeat-value");
         let repeat_case = match self.repeat_case {
             CheckRepeatType::Everytime => CheckRepeatType::Everytime,
             CheckRepeatType::Conditional(_) => CheckRepeatType::Conditional(parse_positive_i32(
                 &self.repeat_value,
-                "Repeat value",
+                &repeat_field_name,
+                i18n,
             )?),
-            CheckRepeatType::Specific(_) => {
-                CheckRepeatType::Specific(parse_positive_i32(&self.repeat_value, "Repeat value")?)
-            }
-            CheckRepeatType::Until(_) => {
-                CheckRepeatType::Until(parse_positive_i32(&self.repeat_value, "Repeat value")?)
-            }
+            CheckRepeatType::Specific(_) => CheckRepeatType::Specific(parse_positive_i32(
+                &self.repeat_value,
+                &repeat_field_name,
+                i18n,
+            )?),
+            CheckRepeatType::Until(_) => CheckRepeatType::Until(parse_positive_i32(
+                &self.repeat_value,
+                &repeat_field_name,
+                i18n,
+            )?),
         };
 
         let mut check = Check::new(name);
@@ -62,14 +69,22 @@ impl NewCheckDraft {
     }
 }
 
-fn parse_positive_i32(value: &str, field_name: &str) -> Result<i32, String> {
-    let parsed = value
-        .trim()
-        .parse::<i32>()
-        .map_err(|_| format!("{field_name} must be a valid integer."))?;
+fn parse_positive_i32(value: &str, field_name: &str, i18n: &I18n) -> Result<i32, String> {
+    let parsed = value.trim().parse::<i32>().map_err(|_| {
+        i18n.tr(
+            "validation-field-valid-integer",
+            &[("field", I18nValue::from(field_name))],
+        )
+    })?;
 
     if parsed < 1 {
-        return Err(format!("{field_name} must be at least 1."));
+        return Err(i18n.tr(
+            "validation-field-at-least",
+            &[
+                ("field", I18nValue::from(field_name)),
+                ("min", I18nValue::from(1_i32)),
+            ],
+        ));
     }
 
     Ok(parsed)

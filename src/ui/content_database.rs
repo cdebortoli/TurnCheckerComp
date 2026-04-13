@@ -8,7 +8,6 @@ use crate::models::{
 };
 
 impl MainContentView {
-    // Update UI from http server updates
     pub(super) fn sync_external_content_updates(&mut self) {
         match self.content_refresh_rx.has_changed() {
             Ok(true) => {
@@ -92,8 +91,13 @@ impl MainContentView {
         content: String,
     ) -> Result<(), String> {
         let updated_comment = {
-            let comment = find_comment_by_type_mut(&mut self.comments, comment_type)
-                .ok_or_else(|| format!("Missing {:?} comment slot.", comment_type))?;
+            let comment = find_comment_by_type_mut(&mut self.comments, comment_type.clone())
+                .ok_or_else(|| {
+                    self.i18n.tr(
+                        "content-missing-comment-slot",
+                        &[("comment_type", comment_type_label(&self.i18n, &comment_type).into())],
+                    )
+                })?;
             let updated = apply_comment_content_update(comment.clone(), content);
             *comment = updated.clone();
             updated
@@ -131,9 +135,9 @@ impl MainContentView {
     }
 }
 
-fn comment_type_order(comment_type: CommentType) -> u8 {
+fn comment_type_label(i18n: &crate::i18n::I18n, comment_type: &CommentType) -> String {
     match comment_type {
-        CommentType::Game => 0,
-        CommentType::Turn => 1,
+        CommentType::Game => i18n.t("comment-type-game"),
+        CommentType::Turn => i18n.t("comment-type-turn"),
     }
 }

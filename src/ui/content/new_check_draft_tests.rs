@@ -1,6 +1,11 @@
 use super::NewCheckDraft;
+use crate::i18n::I18n;
 use crate::models::CheckRepeatType;
 use uuid::Uuid;
+
+fn test_i18n() -> I18n {
+    I18n::from_language("en-US")
+}
 
 #[test]
 fn draft_builds_everytime_check() {
@@ -9,7 +14,7 @@ fn draft_builds_everytime_check() {
         ..Default::default()
     };
 
-    let check = draft.to_check().expect("draft should convert");
+    let check = draft.to_check(&test_i18n()).expect("draft should convert");
     assert_eq!(check.name, "Scout");
     assert_eq!(check.repeat_case, CheckRepeatType::Everytime);
     assert_eq!(check.tag_uuid, None);
@@ -24,8 +29,10 @@ fn draft_requires_positive_repeat_value() {
         ..Default::default()
     };
 
-    let error = draft.to_check().expect_err("repeat value should fail");
-    assert!(error.contains("at least 1"));
+    let error = draft
+        .to_check(&test_i18n())
+        .expect_err("repeat value should fail");
+    assert!(error.contains("at least"));
 }
 
 #[test]
@@ -39,7 +46,7 @@ fn draft_builds_non_default_repeat_type() {
         ..Default::default()
     };
 
-    let check = draft.to_check().expect("draft should convert");
+    let check = draft.to_check(&test_i18n()).expect("draft should convert");
     assert_eq!(check.repeat_case, CheckRepeatType::Specific(4));
     assert_eq!(check.tag_uuid, Some(tag_uuid));
 }

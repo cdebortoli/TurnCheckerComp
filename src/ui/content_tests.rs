@@ -1,15 +1,20 @@
 use super::helpers::{apply_check_status_update, apply_comment_content_update};
 use super::{ContentMode, MainContentView};
+use crate::i18n::I18n;
 use crate::models::{
     check_source_type::CheckSourceType, Check, Comment, CommentType, CurrentSession,
 };
 use tokio::sync::watch;
 use uuid::Uuid;
 
+fn test_i18n() -> I18n {
+    I18n::from_language("en-US")
+}
+
 #[test]
 fn external_refresh_marks_content_dirty() {
     let (content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
-    let mut view = MainContentView::new(content_refresh_rx);
+    let mut view = MainContentView::new(content_refresh_rx, test_i18n());
     view.needs_reload = false;
 
     content_refresh_tx
@@ -46,7 +51,7 @@ fn local_comment_update_marks_comment_unsent() {
 #[test]
 fn next_turn_click_opens_confirmation_when_session_is_available() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
-    let mut view = MainContentView::new(content_refresh_rx);
+    let mut view = MainContentView::new(content_refresh_rx, test_i18n());
     view.current_session = Some(CurrentSession::new(Some(Uuid::new_v4()), "Civ VI", 5));
 
     view.handle_new_turn_click();
@@ -58,7 +63,7 @@ fn next_turn_click_opens_confirmation_when_session_is_available() {
 #[test]
 fn next_turn_click_counts_unchecked_mandatory_turn_checks() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
-    let mut view = MainContentView::new(content_refresh_rx);
+    let mut view = MainContentView::new(content_refresh_rx, test_i18n());
     view.current_session = Some(CurrentSession::new(Some(Uuid::new_v4()), "Civ VI", 5));
 
     let mut unchecked_turn = Check::new("Scout");
@@ -84,7 +89,7 @@ fn next_turn_click_counts_unchecked_mandatory_turn_checks() {
 #[test]
 fn next_turn_click_sets_error_when_session_is_missing() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
-    let mut view = MainContentView::new(content_refresh_rx);
+    let mut view = MainContentView::new(content_refresh_rx, test_i18n());
 
     view.handle_new_turn_click();
 
@@ -99,7 +104,7 @@ fn next_turn_click_sets_error_when_session_is_missing() {
 fn next_turn_wait_unlocks_after_turn_increase_for_same_game() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
     let game_uuid = Uuid::new_v4();
-    let mut view = MainContentView::new(content_refresh_rx);
+    let mut view = MainContentView::new(content_refresh_rx, test_i18n());
     view.current_session = Some(CurrentSession::new(Some(game_uuid), "Civ VI", 5));
 
     view.start_next_turn_wait().expect("wait should start");
@@ -117,7 +122,7 @@ fn next_turn_wait_unlocks_after_turn_increase_for_same_game() {
 fn next_turn_wait_stays_locked_without_turn_increase() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
     let game_uuid = Uuid::new_v4();
-    let mut view = MainContentView::new(content_refresh_rx);
+    let mut view = MainContentView::new(content_refresh_rx, test_i18n());
     view.current_session = Some(CurrentSession::new(Some(game_uuid), "Civ VI", 5));
 
     view.start_next_turn_wait().expect("wait should start");
@@ -130,7 +135,7 @@ fn next_turn_wait_stays_locked_without_turn_increase() {
 #[test]
 fn next_turn_wait_stays_locked_for_different_game_uuid() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
-    let mut view = MainContentView::new(content_refresh_rx);
+    let mut view = MainContentView::new(content_refresh_rx, test_i18n());
     view.current_session = Some(CurrentSession::new(Some(Uuid::new_v4()), "Civ VI", 5));
 
     view.start_next_turn_wait().expect("wait should start");
@@ -143,7 +148,7 @@ fn next_turn_wait_stays_locked_for_different_game_uuid() {
 #[test]
 fn cancel_next_turn_wait_clears_wait_state_and_sets_error() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
-    let mut view = MainContentView::new(content_refresh_rx);
+    let mut view = MainContentView::new(content_refresh_rx, test_i18n());
     view.current_session = Some(CurrentSession::new(Some(Uuid::new_v4()), "Civ VI", 5));
     view.start_next_turn_wait().expect("wait should start");
 

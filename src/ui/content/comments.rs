@@ -1,6 +1,7 @@
 use eframe::egui::{self, RichText};
 
 use super::helpers::{find_comment_by_type, find_comment_by_type_mut, show_sent_status_icon};
+use crate::i18n::I18n;
 use crate::models::{Comment, CommentType};
 use crate::ui::theme::Theme;
 
@@ -28,13 +29,14 @@ impl CommentsView {
         &mut self,
         ui: &mut egui::Ui,
         theme: &Theme,
+        i18n: &I18n,
         comments: &mut Vec<Comment>,
     ) -> Option<CommentsAction> {
         egui::Frame::new()
             .fill(theme.bg_secondary)
             .corner_radius(theme.corner_radius)
             .inner_margin(theme.card_padding)
-            .show(ui, |ui| self.show_comments_content(ui, theme, comments))
+            .show(ui, |ui| self.show_comments_content(ui, theme, i18n, comments))
             .inner
     }
 
@@ -42,21 +44,38 @@ impl CommentsView {
         &mut self,
         ui: &mut egui::Ui,
         theme: &Theme,
+        i18n: &I18n,
         comments: &mut Vec<Comment>,
     ) -> Option<CommentsAction> {
-        ui.heading(RichText::new("Comments").color(theme.text_primary));
+        ui.heading(RichText::new(i18n.t("comments-title")).color(theme.text_primary));
         ui.add_space(theme.spacing_md);
 
-        self.show_comment_toolbar(ui, theme, comments);
+        self.show_comment_toolbar(ui, theme, i18n, comments);
         ui.add_space(theme.spacing_md);
 
-        self.show_comment_editor(ui, theme, comments)
+        self.show_comment_editor(ui, theme, i18n, comments)
     }
 
-    fn show_comment_toolbar(&mut self, ui: &mut egui::Ui, theme: &Theme, comments: &[Comment]) {
+    fn show_comment_toolbar(
+        &mut self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        i18n: &I18n,
+        comments: &[Comment],
+    ) {
         ui.horizontal(|ui| {
-            self.show_comment_type_button(ui, theme, CommentType::Game, "Game");
-            self.show_comment_type_button(ui, theme, CommentType::Turn, "Turn");
+            self.show_comment_type_button(
+                ui,
+                theme,
+                CommentType::Game,
+                &i18n.t("comment-type-game"),
+            );
+            self.show_comment_type_button(
+                ui,
+                theme,
+                CommentType::Turn,
+                &i18n.t("comment-type-turn"),
+            );
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 let is_sent = find_comment_by_type(comments, self.selected_comment_type.clone())
@@ -91,12 +110,13 @@ impl CommentsView {
         &mut self,
         ui: &mut egui::Ui,
         theme: &Theme,
+        i18n: &I18n,
         comments: &mut [Comment],
     ) -> Option<CommentsAction> {
         let Some(selected_comment) =
             find_comment_by_type_mut(comments, self.selected_comment_type.clone())
         else {
-            ui.label(RichText::new("No comment slot is available.").color(theme.text_muted));
+            ui.label(RichText::new(i18n.t("comments-no-slot")).color(theme.text_muted));
             return None;
         };
 

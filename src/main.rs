@@ -2,6 +2,7 @@
 
 mod channels;
 mod database;
+mod i18n;
 mod input;
 mod models;
 mod platform;
@@ -14,10 +15,12 @@ fn main() -> anyhow::Result<()> {
         .build()?;
     let channels = channels::AppChannels::new();
 
-    let native_options = ui::TurnCheckerApp::native_options();
+    let i18n = i18n::I18n::system();
+    let app_title = i18n.t("app-title");
+    let native_options = ui::TurnCheckerApp::native_options(&app_title);
 
     eframe::run_native(
-        "Turn Checker Companion",
+        &app_title,
         native_options,
         Box::new(move |cc| {
             egui_extras::install_image_loaders(&cc.egui_ctx);
@@ -26,6 +29,7 @@ fn main() -> anyhow::Result<()> {
                 runtime,
                 cc.egui_ctx.clone(),
                 channels.ui.clone(),
+                i18n.clone(),
             )))
         }),
     )

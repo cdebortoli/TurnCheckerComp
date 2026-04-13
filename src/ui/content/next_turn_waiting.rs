@@ -1,6 +1,7 @@
 use eframe::egui::{self, RichText};
 use uuid::Uuid;
 
+use crate::i18n::I18n;
 use crate::models::CurrentSession;
 use crate::ui::theme::Theme;
 
@@ -54,22 +55,23 @@ impl NextTurnWaitingView {
         false
     }
 
-    pub(super) fn show(&mut self, ui: &mut egui::Ui, theme: &Theme) {
+    pub(super) fn show(&mut self, ui: &mut egui::Ui, theme: &Theme, i18n: &I18n) {
         egui::Frame::new()
             .fill(theme.bg_turn_card)
             .inner_margin(theme.card_padding)
             .corner_radius(theme.corner_radius)
             .show(ui, |ui| {
                 ui.vertical_centered(|ui| {
-                    ui.heading(RichText::new("Waiting for next turn...").color(theme.text_primary));
+                    ui.heading(
+                        RichText::new(i18n.t("waiting-next-turn-title"))
+                            .color(theme.text_primary),
+                    );
                     ui.add_space(theme.spacing_md);
                     ui.spinner();
                     ui.add_space(theme.spacing_md);
                     ui.label(
-                        RichText::new(
-                            "The app will unlock automatically when the new turn is received.",
-                        )
-                        .color(theme.text_secondary),
+                        RichText::new(i18n.t("waiting-next-turn-description"))
+                            .color(theme.text_secondary),
                     );
                 });
             });

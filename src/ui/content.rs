@@ -19,6 +19,7 @@ mod toggle_button;
 #[path = "content_toolbar.rs"]
 mod toolbar;
 
+use crate::i18n::I18n;
 use crate::models::{check_source_type::CheckSourceType, Check, Comment, CurrentSession, Tag};
 use crate::ui::theme::Theme;
 use eframe::egui;
@@ -31,6 +32,7 @@ use self::next_turn_waiting::NextTurnWaitingView;
 use self::source_checks::SourceChecksView;
 
 pub struct MainContentView {
+    i18n: I18n,
     mode: ContentMode,
     checks: Vec<Check>,
     source_checks: Vec<Check>,
@@ -66,13 +68,14 @@ enum ContentMode {
 
 #[derive(Clone)]
 struct SourceChecksConfig {
-    title: &'static str,
+    title_key: &'static str,
     source: CheckSourceType,
 }
 
 impl MainContentView {
-    pub fn new(content_refresh_rx: watch::Receiver<u64>) -> Self {
+    pub fn new(content_refresh_rx: watch::Receiver<u64>, i18n: I18n) -> Self {
         Self {
+            i18n,
             mode: ContentMode::General,
             checks: Vec::new(),
             source_checks: Vec::new(),

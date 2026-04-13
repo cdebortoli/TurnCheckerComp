@@ -4,6 +4,7 @@ fn main() {
     println!("cargo:rerun-if-changed=graphics.toml");
     println!("cargo:rerun-if-changed=parameters.txt");
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=locales");
 
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR"));

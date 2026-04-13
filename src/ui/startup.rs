@@ -2,13 +2,14 @@ use eframe::egui;
 use tokio::runtime::Runtime;
 use tokio::sync::watch;
 
-use crate::{database, server};
+use crate::{database, i18n::{I18n, I18nValue}, server};
 
 use super::pairing::PairingView;
 use super::theme::Theme;
 use egui::RichText;
 
 pub struct StartupController {
+    i18n: I18n,
     state: StartupState,
     server_started: bool,
     server_connection: Option<server::ServerConnectionInfo>,
@@ -26,6 +27,7 @@ impl StartupController {
     pub fn new(
         content_refresh_tx: watch::Sender<u64>,
         push_notification_client: server::PushNotificationClient,
+        i18n: I18n,
     ) -> Self {
         let state = match database::inspect_startup_state() {
             Ok(database::DatabaseStartupState::Ready) => StartupState::Ready,
@@ -36,6 +38,7 @@ impl StartupController {
         };
 
         Self {
+            i18n,
             state,
             server_started: false,
             server_connection: None,
@@ -74,18 +77,18 @@ impl StartupController {
             )
             .show_inside(ui, |ui| match &self.state {
                 StartupState::NeedsDecision { .. } => {
-                    ui.label(RichText::new("Waiting...").color(theme.text_muted));
+                    ui.label(RichText::new(self.i18n.t("startup-waiting")).color(theme.text_muted));
                 }
                 StartupState::Ready => {
                     if !self.server_started {
                         ui.label(
-                            RichText::new("Starting the local sync server...")
+                            RichText::new(self.i18n.t("app-server-starting"))
                                 .color(theme.text_muted),
                         );
                     }
                 }
                 StartupState::Failed(message) => {
-                    ui.label(RichText::new("Startup failed.").color(theme.text_primary));
+                    ui.label(RichText::new(self.i18n.t("startup-failed")).color(theme.text_primary));
                     ui.monospace(RichText::new(message).color(theme.destructive));
                 }
             });
@@ -105,29 +108,30 @@ impl StartupController {
 
         if let Some(unsent_records) = unsent_records {
             let ctx = ui.ctx().clone();
-            egui::Window::new("Unsent data found")
+            egui::Window::new(self.i18n.t("startup-unsent-data-title"))
                 .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
                 .collapsible(false)
                 .resizable(false)
                 .show(&ctx, |ui| {
                     ui.label(
-                        RichText::new(format!(
-                            "The current database contains {unsent_records} unsent record(s)."
+                        RichText::new(self.i18n.tr(
+                            "startup-unsent-data-message",
+                            &[("count", I18nValue::from(unsent_records))],
                         ))
                         .color(theme.text_primary),
                     );
                     ui.label(
-                        RichText::new("Do you want to keep the current database?")
+                        RichText::new(self.i18n.t("startup-keep-db-question"))
                             .color(theme.text_muted),
                     );
                     ui.add_space(theme.spacing_md);
 
                     ui.horizontal(|ui| {
-                        if ui.button("Keep current database").clicked() {
+                        if ui.button(self.i18n.t("startup-keep-db-button")).clicked() {
                             self.continue_startup(runtime, pairing_state.clone());
                         }
 
-                        if ui.button("Delete and recreate database").clicked() {
+                        if ui.button(self.i18n.t("startup-reset-db-button")).clicked() {
                             self.reset_database_and_continue(runtime, pairing_state.clone());
                         }
                     });

@@ -2,6 +2,7 @@ use eframe::egui::{self, RichText};
 
 use super::helpers::{find_tag_by_uuid, tag_fill_color};
 use super::new_check_draft::NewCheckDraft;
+use crate::i18n::I18n;
 use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType, Tag};
 use crate::ui::content::toggle_button::toggle;
@@ -23,23 +24,24 @@ impl NewCheckView {
         &mut self,
         ui: &mut egui::Ui,
         theme: &Theme,
+        i18n: &I18n,
         tags: &[Tag],
     ) -> Option<NewCheckAction> {
-        self.show_new_check_heading(ui, theme);
+        self.show_new_check_heading(ui, theme, i18n);
 
         let mut action = None;
         egui::ScrollArea::vertical().show(ui, |ui| {
-            self.show_new_check_text_fields(ui, theme);
+            self.show_new_check_text_fields(ui, theme, i18n);
             ui.horizontal(|ui| {
-                self.show_new_check_tag_selector(ui, theme, tags);
-                self.show_new_check_source_selector(ui, theme);
+                self.show_new_check_tag_selector(ui, theme, i18n, tags);
+                self.show_new_check_source_selector(ui, theme, i18n);
                 ui.vertical(|ui| {
-                    self.show_new_check_repeat_selector(ui, theme);
-                    self.show_new_check_repeat_value(ui, theme);
+                    self.show_new_check_repeat_selector(ui, theme, i18n);
+                    self.show_new_check_repeat_value(ui, theme, i18n);
                 });
             });
-            self.show_new_check_toggles(ui, theme);
-            action = self.show_new_check_actions(ui);
+            self.show_new_check_toggles(ui, theme, i18n);
+            action = self.show_new_check_actions(ui, i18n);
         });
 
         action
@@ -49,20 +51,32 @@ impl NewCheckView {
         self.reset_new_check_form();
     }
 
-    fn show_new_check_heading(&self, ui: &mut egui::Ui, theme: &Theme) {
-        ui.heading(RichText::new("Create a new check").color(theme.text_primary));
+    fn show_new_check_heading(&self, ui: &mut egui::Ui, theme: &Theme, i18n: &I18n) {
+        ui.heading(RichText::new(i18n.t("new-check-title")).color(theme.text_primary));
         ui.add_space(theme.spacing_md);
     }
 
-    fn show_new_check_text_fields(&mut self, ui: &mut egui::Ui, theme: &Theme) {
-        labeled_text_edit(ui, theme, "Name", &mut self.draft.name, false, None);
-        labeled_text_edit(ui, theme, "Detail", &mut self.draft.detail, true, None);
+    fn show_new_check_text_fields(&mut self, ui: &mut egui::Ui, theme: &Theme, i18n: &I18n) {
+        labeled_text_edit(ui, theme, &i18n.t("field-name"), &mut self.draft.name, false, None);
+        labeled_text_edit(
+            ui,
+            theme,
+            &i18n.t("field-detail"),
+            &mut self.draft.detail,
+            true,
+            None,
+        );
     }
 
-    fn show_new_check_source_selector(&mut self, ui: &mut egui::Ui, theme: &Theme) {
-        ui.label(RichText::new("Source").color(theme.text_secondary));
+    fn show_new_check_source_selector(
+        &mut self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        i18n: &I18n,
+    ) {
+        ui.label(RichText::new(i18n.t("field-source")).color(theme.text_secondary));
         egui::ComboBox::from_id_salt("new_check_source")
-            .selected_text(source_label(&self.draft.source))
+            .selected_text(source_label(i18n, &self.draft.source))
             .show_ui(ui, |ui| {
                 for source in [
                     CheckSourceType::Game,
@@ -70,10 +84,11 @@ impl NewCheckView {
                     CheckSourceType::Blueprint,
                     CheckSourceType::Turn,
                 ] {
+                    let label = source_label(i18n, &source);
                     let is_selected = self.draft.source == source;
                     if show_colored_option(
                         ui,
-                        source_label(&source),
+                        &label,
                         source_color(&source, theme),
                         is_selected,
                     )
@@ -87,17 +102,27 @@ impl NewCheckView {
         ui.add_space(theme.spacing_md);
     }
 
-    fn show_new_check_tag_selector(&mut self, ui: &mut egui::Ui, theme: &Theme, tags: &[Tag]) {
-        ui.label(RichText::new("Tag").color(theme.text_secondary));
+    fn show_new_check_tag_selector(
+        &mut self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        i18n: &I18n,
+        tags: &[Tag],
+    ) {
+        ui.label(RichText::new(i18n.t("field-tag")).color(theme.text_secondary));
 
         let selected_label = find_tag_by_uuid(tags, self.draft.selected_tag_uuid)
-            .map(|tag| tag.name.as_str())
-            .unwrap_or("No tag");
+            .map(|tag| tag.name.clone())
+            .unwrap_or_else(|| i18n.t("field-no-tag"));
 
         egui::ComboBox::from_id_salt("new_check_tag")
             .selected_text(selected_label)
             .show_ui(ui, |ui| {
-                ui.selectable_value(&mut self.draft.selected_tag_uuid, None, "No tag");
+                ui.selectable_value(
+                    &mut self.draft.selected_tag_uuid,
+                    None,
+                    i18n.t("field-no-tag"),
+                );
 
                 for tag in tags {
                     let is_selected = self.draft.selected_tag_uuid == Some(tag.uuid);
@@ -110,11 +135,16 @@ impl NewCheckView {
         ui.add_space(theme.spacing_md);
     }
 
-    fn show_new_check_repeat_selector(&mut self, ui: &mut egui::Ui, theme: &Theme) {
+    fn show_new_check_repeat_selector(
+        &mut self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        i18n: &I18n,
+    ) {
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Repeat").color(theme.text_secondary));
+            ui.label(RichText::new(i18n.t("field-repeat")).color(theme.text_secondary));
             egui::ComboBox::from_id_salt("new_check_repeat_kind")
-                .selected_text(repeat_label(&self.draft.repeat_case))
+                .selected_text(repeat_label(i18n, &self.draft.repeat_case))
                 .show_ui(ui, |ui| {
                     for repeat_case in [
                         CheckRepeatType::Everytime,
@@ -122,9 +152,10 @@ impl NewCheckView {
                         CheckRepeatType::Specific(1),
                         CheckRepeatType::Until(1),
                     ] {
+                        let label = repeat_label(i18n, &repeat_case);
                         if show_colored_option(
                             ui,
-                            repeat_label(&repeat_case),
+                            &label,
                             repeat_color(&repeat_case, theme),
                             same_repeat_variant(&self.draft.repeat_case, &repeat_case),
                         )
@@ -139,13 +170,18 @@ impl NewCheckView {
         });
     }
 
-    fn show_new_check_repeat_value(&mut self, ui: &mut egui::Ui, theme: &Theme) {
+    fn show_new_check_repeat_value(
+        &mut self,
+        ui: &mut egui::Ui,
+        theme: &Theme,
+        i18n: &I18n,
+    ) {
         if repeat_requires_value(&self.draft.repeat_case) {
             ui.horizontal(|ui| {
                 labeled_text_edit(
                     ui,
                     theme,
-                    "Repeat value",
+                    &i18n.t("field-repeat-value"),
                     &mut self.draft.repeat_value,
                     false,
                     Some(40.0),
@@ -156,29 +192,29 @@ impl NewCheckView {
         }
     }
 
-    fn show_new_check_toggles(&mut self, ui: &mut egui::Ui, theme: &Theme) {
+    fn show_new_check_toggles(&mut self, ui: &mut egui::Ui, theme: &Theme, i18n: &I18n) {
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Mandatory").color(theme.text_secondary));
+            ui.label(RichText::new(i18n.t("field-mandatory")).color(theme.text_secondary));
             ui.add(toggle(&mut self.draft.is_mandatory, theme));
         });
         ui.add_space(theme.spacing_lg);
     }
 
-    fn show_new_check_actions(&mut self, ui: &mut egui::Ui) -> Option<NewCheckAction> {
+    fn show_new_check_actions(&mut self, ui: &mut egui::Ui, i18n: &I18n) -> Option<NewCheckAction> {
         let mut action = None;
 
         ui.horizontal(|ui| {
-            if ui.button("Cancel").clicked() {
+            if ui.button(i18n.t("action-cancel")).clicked() {
                 self.reset_new_check_form();
                 action = Some(NewCheckAction::Cancelled);
             }
 
             let save_enabled = !self.draft.name.trim().is_empty();
             if ui
-                .add_enabled(save_enabled, egui::Button::new("Save"))
+                .add_enabled(save_enabled, egui::Button::new(i18n.t("action-save")))
                 .clicked()
             {
-                action = Some(match self.draft.to_check() {
+                action = Some(match self.draft.to_check(i18n) {
                     Ok(check) => NewCheckAction::SaveRequested(check),
                     Err(error) => NewCheckAction::ValidationFailed(error),
                 });
@@ -227,21 +263,21 @@ fn labeled_text_edit(
     ui.add_space(theme.spacing_md);
 }
 
-fn source_label(source: &CheckSourceType) -> &'static str {
+fn source_label(i18n: &I18n, source: &CheckSourceType) -> String {
     match source {
-        CheckSourceType::Game => "Game",
-        CheckSourceType::GlobalGame => "Global Game",
-        CheckSourceType::Blueprint => "Blueprint",
-        CheckSourceType::Turn => "Turn",
+        CheckSourceType::Game => i18n.t("source-game"),
+        CheckSourceType::GlobalGame => i18n.t("source-global-game"),
+        CheckSourceType::Blueprint => i18n.t("source-blueprint"),
+        CheckSourceType::Turn => i18n.t("source-turn"),
     }
 }
 
-fn repeat_label(repeat_case: &CheckRepeatType) -> &'static str {
+fn repeat_label(i18n: &I18n, repeat_case: &CheckRepeatType) -> String {
     match repeat_case {
-        CheckRepeatType::Everytime => "Everytime",
-        CheckRepeatType::Conditional(_) => "Conditional",
-        CheckRepeatType::Specific(_) => "Specific",
-        CheckRepeatType::Until(_) => "Until",
+        CheckRepeatType::Everytime => i18n.t("repeat-everytime"),
+        CheckRepeatType::Conditional(_) => i18n.t("repeat-conditional"),
+        CheckRepeatType::Specific(_) => i18n.t("repeat-specific"),
+        CheckRepeatType::Until(_) => i18n.t("repeat-until"),
     }
 }
 

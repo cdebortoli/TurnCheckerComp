@@ -9,32 +9,42 @@ impl MainContentView {
             ContentMode::General | ContentMode::WaitingForNextTurn => {
                 ui.add_enabled_ui(!self.is_waiting_for_next_turn(), |ui| {
                     self.show_next_turn_button(ui, theme);
-                    self.show_mode_button(ui, theme, "New Check", ContentMode::NewCheck);
+                    self.show_mode_button(
+                        ui,
+                        theme,
+                        &self.i18n.t("content-new-check-button"),
+                        ContentMode::NewCheck,
+                    );
                     self.show_source_checks_button(
                         ui,
                         theme,
-                        "Game's turns checks",
+                        "content-source-game-turns-button",
                         CheckSourceType::Game,
                     );
                     self.show_source_checks_button(
                         ui,
                         theme,
-                        "Game's checks",
+                        "content-source-game-button",
                         CheckSourceType::GlobalGame,
                     );
                     self.show_source_checks_button(
                         ui,
                         theme,
-                        "Template's checks",
+                        "content-source-template-button",
                         CheckSourceType::Blueprint,
                     );
-                    self.show_mode_button(ui, theme, "Comments", ContentMode::Comments);
+                    self.show_mode_button(
+                        ui,
+                        theme,
+                        &self.i18n.t("content-comments-button"),
+                        ContentMode::Comments,
+                    );
                     self.show_restart_button(ui, theme);
                 });
             }
             _ => {
                 if ui
-                    .button(RichText::new("Back").color(theme.text_primary))
+                    .button(RichText::new(self.i18n.t("action-back")).color(theme.text_primary))
                     .clicked()
                 {
                     self.mode = ContentMode::General;
@@ -45,9 +55,11 @@ impl MainContentView {
     }
 
     fn show_next_turn_button(&mut self, ui: &mut egui::Ui, theme: &Theme) {
-        let button = egui::Button::new(RichText::new("Next turn").color(theme.text_primary))
-            .fill(theme.bg_secondary)
-            .corner_radius(theme.corner_radius);
+        let button = egui::Button::new(
+            RichText::new(self.i18n.t("action-next-turn")).color(theme.text_primary),
+        )
+        .fill(theme.bg_secondary)
+        .corner_radius(theme.corner_radius);
 
         if ui.add(button).clicked() {
             self.handle_new_turn_click();
@@ -79,37 +91,38 @@ impl MainContentView {
         &mut self,
         ui: &mut egui::Ui,
         theme: &Theme,
-        label: &'static str,
+        title_key: &'static str,
         source: CheckSourceType,
     ) {
         let is_active = self.mode == ContentMode::SourceChecks
             && self
                 .source_checks_config
                 .as_ref()
-                .is_some_and(|config| config.title == label && config.source == source);
-        let button = egui::Button::new(RichText::new(label).color(theme.text_primary))
-            .fill(if is_active {
-                theme.accent
-            } else {
-                theme.bg_secondary
-            })
-            .corner_radius(theme.corner_radius);
+                .is_some_and(|config| config.title_key == title_key && config.source == source);
+        let button = egui::Button::new(
+            RichText::new(self.i18n.t(title_key)).color(theme.text_primary),
+        )
+        .fill(if is_active {
+            theme.accent
+        } else {
+            theme.bg_secondary
+        })
+        .corner_radius(theme.corner_radius);
 
         if ui.add(button).clicked() {
             self.mode = ContentMode::SourceChecks;
-            self.source_checks_config = Some(SourceChecksConfig {
-                title: label,
-                source,
-            });
+            self.source_checks_config = Some(SourceChecksConfig { title_key, source });
             self.error_message = None;
             self.needs_reload = true;
         }
     }
 
     fn show_restart_button(&mut self, ui: &mut egui::Ui, theme: &Theme) {
-        let button = egui::Button::new(RichText::new("Restart").color(theme.text_primary))
-            .fill(theme.bg_secondary)
-            .corner_radius(theme.corner_radius);
+        let button = egui::Button::new(
+            RichText::new(self.i18n.t("action-restart")).color(theme.text_primary),
+        )
+        .fill(theme.bg_secondary)
+        .corner_radius(theme.corner_radius);
 
         if ui.add(button).clicked() {
             self.handle_restart_click();

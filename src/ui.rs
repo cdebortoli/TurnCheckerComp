@@ -7,7 +7,7 @@ use eframe::egui;
 use egui::RichText;
 use tokio::runtime::Runtime;
 
-use crate::{channels::UiChannels, platform, server};
+use crate::{channels::UiChannels, i18n::I18n, platform, server};
 
 use self::content::MainContentView;
 use self::pairing::PairingView;
@@ -23,6 +23,7 @@ const MINIMAL_MODE_BUTTON_BG_ALPHA: u8 = 196;
 pub struct TurnCheckerApp {
     runtime: Runtime,
     _channels: UiChannels,
+    i18n: I18n,
     startup: StartupController,
     pairing: PairingView,
     content: MainContentView,
@@ -68,13 +69,16 @@ impl TurnCheckerApp {
         ctx.set_fonts(fonts);
     }
 
-    pub fn new(runtime: Runtime, repaint_ctx: egui::Context, channels: UiChannels) -> Self {
+    pub fn new(
+        runtime: Runtime,
+        repaint_ctx: egui::Context,
+        channels: UiChannels,
+        i18n: I18n,
+    ) -> Self {
         let mut repaint_refresh_rx = channels.content_refresh_rx.clone();
         let push_notification_client = server::PushNotificationClient::new();
-        //let repaint_ctx_for_task = repaint_ctx.clone();
         runtime.spawn(async move {
             while repaint_refresh_rx.changed().await.is_ok() {
-                // repaint_ctx_for_task.request_repaint();
                 repaint_ctx.request_repaint();
             }
         });
@@ -82,12 +86,14 @@ impl TurnCheckerApp {
         Self {
             runtime,
             _channels: channels.clone(),
+            i18n: i18n.clone(),
             startup: StartupController::new(
                 channels.content_refresh_tx.clone(),
                 push_notification_client.clone(),
+                i18n.clone(),
             ),
-            pairing: PairingView::new(),
-            content: MainContentView::new(channels.content_refresh_rx.clone()),
+            pairing: PairingView::new(i18n.clone()),
+            content: MainContentView::new(channels.content_refresh_rx.clone(), i18n),
             push_notification_client,
             minimal_mode: false,
             always_on_top: false,
@@ -97,12 +103,12 @@ impl TurnCheckerApp {
         }
     }
 
-    pub fn native_options() -> eframe::NativeOptions {
+    pub fn native_options(title: &str) -> eframe::NativeOptions {
         let mut options = eframe::NativeOptions {
             viewport: egui::ViewportBuilder::default()
                 .with_inner_size(CLASSIC_WINDOW_SIZE)
                 .with_min_inner_size(CLASSIC_MIN_WINDOW_SIZE)
-                .with_title("Turn Checker Companion")
+                .with_title(title)
                 .with_icon(Self::app_icon())
                 .with_decorations(true)
                 .with_transparent(true)
@@ -231,7 +237,7 @@ impl TurnCheckerApp {
                 ))
                 .fit_to_exact_size(egui::vec2(24.0, 24.0)),
             );
-            ui.heading(RichText::new("Turn Checker Companion").color(theme.text_primary));
+            ui.heading(RichText::new(self.i18n.t("app-title")).color(theme.text_primary));
 
             let button_size = egui::vec2(20.0, 20.0);
             let available_width = ui.available_width().max(button_size.x);
@@ -239,19 +245,23 @@ impl TurnCheckerApp {
                 egui::vec2(available_width, button_size.y),
                 egui::Layout::right_to_left(egui::Align::Center),
                 |ui| {
-                    if Self::show_theme_toggle_button(ui, theme).clicked() {
+                    if Self::show_theme_toggle_button(ui, theme, &self.i18n).clicked() {
                         Self::toggle_theme(ui.ctx(), ui.visuals().dark_mode);
                     }
 
                     ui.add_space(theme.spacing_sm);
 
-                    if Self::show_always_on_top_button(ui, theme, self.always_on_top).clicked() {
+                    if Self::show_always_on_top_button(ui, theme, self.always_on_top, &self.i18n)
+                        .clicked()
+                    {
                         self.toggle_always_on_top(ui.ctx());
                     }
 
                     ui.add_space(theme.spacing_sm);
 
-                    if Self::show_minimal_mode_button(ui, theme, self.minimal_mode).clicked() {
+                    if Self::show_minimal_mode_button(ui, theme, self.minimal_mode, &self.i18n)
+                        .clicked()
+                    {
                         self.toggle_minimal_mode(ui.ctx());
                     }
                 },
@@ -304,7 +314,11 @@ impl TurnCheckerApp {
         response
     }
 
-    fn show_theme_toggle_button(ui: &mut egui::Ui, theme: &theme::Theme) -> egui::Response {
+    fn show_theme_toggle_button(
+        ui: &mut egui::Ui,
+        theme: &theme::Theme,
+        i18n: &I18n,
+    ) -> egui::Response {
         Self::show_round_icon_button(
             ui,
             theme,
@@ -322,13 +336,14 @@ impl TurnCheckerApp {
                 );
             },
         )
-        .on_hover_text("Toggle light/dark mode")
+        .on_hover_text(i18n.t("app-theme-toggle-tooltip"))
     }
 
     fn show_always_on_top_button(
         ui: &mut egui::Ui,
         theme: &theme::Theme,
         active: bool,
+        i18n: &I18n,
     ) -> egui::Response {
         Self::show_round_icon_button(
             ui,
@@ -373,9 +388,9 @@ impl TurnCheckerApp {
             },
         )
         .on_hover_text(if active {
-            "Disable always-on-top"
+            i18n.t("app-always-on-top-disable-tooltip")
         } else {
-            "Keep the app above other windows"
+            i18n.t("app-always-on-top-enable-tooltip")
         })
     }
 
@@ -383,6 +398,7 @@ impl TurnCheckerApp {
         ui: &mut egui::Ui,
         theme: &theme::Theme,
         minimal_mode: bool,
+        i18n: &I18n,
     ) -> egui::Response {
         let size = if minimal_mode {
             egui::vec2(MINIMAL_MODE_BUTTON_SIZE, MINIMAL_MODE_BUTTON_SIZE)
@@ -421,9 +437,9 @@ impl TurnCheckerApp {
             },
         )
         .on_hover_text(if minimal_mode {
-            "Return to the full view"
+            i18n.t("app-minimal-mode-disable-tooltip")
         } else {
-            "Switch to a compact overlay"
+            i18n.t("app-minimal-mode-enable-tooltip")
         })
     }
 
@@ -440,7 +456,9 @@ impl TurnCheckerApp {
         ui.with_layout(
             egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
             |ui| {
-                if Self::show_minimal_mode_button(ui, theme, self.minimal_mode).clicked() {
+                if Self::show_minimal_mode_button(ui, theme, self.minimal_mode, &self.i18n)
+                    .clicked()
+                {
                     self.toggle_minimal_mode(ui.ctx());
                 }
             },
@@ -504,7 +522,7 @@ impl eframe::App for TurnCheckerApp {
                         self.pairing.show_waiting(ui);
                     } else {
                         ui.label(
-                            RichText::new("Starting the local sync server...")
+                            RichText::new(self.i18n.t("app-server-starting"))
                                 .color(theme.text_muted),
                         );
                     }

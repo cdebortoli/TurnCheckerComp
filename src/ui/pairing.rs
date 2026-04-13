@@ -4,9 +4,10 @@ use qrcode::QrCode;
 use super::content::ContentAction;
 use super::theme::Theme;
 use super::TurnCheckerApp;
-use crate::server;
+use crate::{i18n::I18n, server};
 
 pub struct PairingView {
+    i18n: I18n,
     pairing_state: server::PairingState,
     server_connection: Option<server::ServerConnectionInfo>,
     qr_texture: Option<egui::TextureHandle>,
@@ -46,8 +47,9 @@ impl TurnCheckerApp {
 }
 
 impl PairingView {
-    pub fn new() -> Self {
+    pub fn new(i18n: I18n) -> Self {
         Self {
+            i18n,
             pairing_state: server::PairingState::new(),
             server_connection: None,
             qr_texture: None,
@@ -78,19 +80,15 @@ impl PairingView {
                     .corner_radius(theme.corner_radius),
             )
             .show_inside(ui, |ui| {
-                ui.heading(RichText::new("Scan To Connect").color(theme.text_primary));
+                ui.heading(RichText::new(self.i18n.t("pairing-title")).color(theme.text_primary));
                 ui.label(
-                    RichText::new(
-                        "Open the iOS app and scan the QR code to configure the server address.",
-                    )
-                    .color(theme.text_secondary),
+                    RichText::new(self.i18n.t("pairing-description")).color(theme.text_secondary),
                 );
                 ui.add_space(theme.spacing_md);
 
                 if let Err(error) = self.ensure_qr_texture(ui) {
                     ui.label(
-                        RichText::new("Failed to generate pairing QR code.")
-                            .color(theme.destructive),
+                        RichText::new(self.i18n.t("pairing-qr-failed")).color(theme.destructive),
                     );
                     ui.monospace(RichText::new(error.to_string()).color(theme.text_muted));
                     return;
@@ -104,7 +102,10 @@ impl PairingView {
 
                 if let Some(server_connection) = &self.server_connection {
                     ui.add_space(theme.spacing_md);
-                    ui.label(RichText::new("Server URL").color(theme.text_secondary));
+                    ui.label(
+                        RichText::new(self.i18n.t("pairing-server-url"))
+                            .color(theme.text_secondary),
+                    );
                     ui.monospace(
                         RichText::new(&server_connection.base_url).color(theme.text_primary),
                     );
@@ -121,7 +122,7 @@ impl PairingView {
             .server_connection
             .as_ref()
             .map(|info| info.qr_payload.as_str())
-            .ok_or_else(|| anyhow::anyhow!("server connection info is not available"))?;
+            .ok_or_else(|| anyhow::anyhow!(self.i18n.t("pairing-server-connection-missing")))?;
 
         let code = QrCode::new(qr_payload.as_bytes())?;
         let width = code.width();

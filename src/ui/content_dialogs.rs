@@ -1,4 +1,5 @@
 use super::{ContentAction, ContentMode, MainContentView};
+use crate::i18n::I18nValue;
 use crate::ui::theme::Theme;
 use eframe::egui::{self, RichText};
 
@@ -33,41 +34,40 @@ impl MainContentView {
         };
 
         let ctx = ui.ctx().clone();
-        egui::Window::new("New turn")
+        egui::Window::new(self.i18n.t("dialog-new-turn-title"))
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
             .collapsible(false)
             .resizable(false)
             .show(&ctx, |ui| {
                 if unchecked_mandatory_checks > 0 {
                     ui.label(
-                        RichText::new(format!(
-                            "You still have {unchecked_mandatory_checks} mandatory current-turn check(s) to complete."
+                        RichText::new(self.i18n.tr(
+                            "dialog-new-turn-pending-message",
+                            &[("count", I18nValue::from(unchecked_mandatory_checks))],
                         ))
                         .color(theme.text_primary),
                     );
                     ui.label(
-                        RichText::new(
-                            "The next-turn notification cannot be sent until all mandatory current-turn checks are checked.",
-                        )
-                        .color(theme.text_muted),
+                        RichText::new(self.i18n.t("dialog-new-turn-blocked-message"))
+                            .color(theme.text_muted),
                     );
                 } else {
                     ui.label(
-                        RichText::new(
-                            "Sending a new-turn notification will switch this screen to waiting mode until the next turn arrives.",
-                        )
-                        .color(theme.text_primary),
+                        RichText::new(self.i18n.t("dialog-new-turn-confirm-message"))
+                            .color(theme.text_primary),
                     );
                 }
 
                 ui.add_space(theme.spacing_md);
 
                 ui.horizontal(|ui| {
-                    if ui.button("Cancel").clicked() {
+                    if ui.button(self.i18n.t("action-cancel")).clicked() {
                         self.new_turn_confirmation_open = None;
                     }
 
-                    if unchecked_mandatory_checks == 0 && ui.button("Next turn").clicked() {
+                    if unchecked_mandatory_checks == 0
+                        && ui.button(self.i18n.t("action-next-turn")).clicked()
+                    {
                         self.new_turn_confirmation_open = None;
                         match self.request_new_turn() {
                             Ok(()) => *action = Some(ContentAction::NewTurnNotifRequested),
@@ -84,43 +84,43 @@ impl MainContentView {
         theme: &Theme,
         action: &mut Option<ContentAction>,
     ) {
-        let Some(unsent_checks) = self.restart_confirmation_unsent_checks else {
+        let Some(unsent_records) = self.restart_confirmation_unsent_checks else {
             return;
         };
 
         let ctx = ui.ctx().clone();
-        egui::Window::new("Restart")
+        egui::Window::new(self.i18n.t("dialog-restart-title"))
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
             .collapsible(false)
             .resizable(false)
             .show(&ctx, |ui| {
-
-                if unsent_checks > 0 {
-                  ui.label(
-                      RichText::new(format!(
-                          "The database contains {unsent_checks} unsent check(s)."
-                      ))
-                      .color(theme.text_primary),
-                  );
-                  ui.label(
-                      RichText::new(
-                          "Restarting will delete and recreate the database, then return to the pairing screen.",
-                      )
-                      .color(theme.text_muted),
-                  );
+                if unsent_records > 0 {
+                    ui.label(
+                        RichText::new(self.i18n.tr(
+                            "dialog-restart-unsent-message",
+                            &[("count", I18nValue::from(unsent_records))],
+                        ))
+                        .color(theme.text_primary),
+                    );
+                    ui.label(
+                        RichText::new(self.i18n.t("dialog-restart-confirm-message"))
+                            .color(theme.text_muted),
+                    );
                 } else {
-                  ui.label(RichText::new("Restarting will delete and recreate the database, then return to the pairing screen.")
-                    .color(theme.text_primary));
+                    ui.label(
+                        RichText::new(self.i18n.t("dialog-restart-confirm-message"))
+                            .color(theme.text_primary),
+                    );
                 }
 
                 ui.add_space(theme.spacing_md);
 
                 ui.horizontal(|ui| {
-                    if ui.button("Cancel").clicked() {
+                    if ui.button(self.i18n.t("action-cancel")).clicked() {
                         self.restart_confirmation_unsent_checks = None;
                     }
 
-                    if ui.button("Restart").clicked() {
+                    if ui.button(self.i18n.t("action-restart")).clicked() {
                         self.restart_confirmation_unsent_checks = None;
                         *action = Some(ContentAction::RestartRequested);
                     }
@@ -141,6 +141,7 @@ impl MainContentView {
                 let action = self.checklist_view.show(
                     ui,
                     theme,
+                    &self.i18n,
                     self.current_session.as_ref(),
                     &self.checks,
                     &self.tags,
@@ -150,27 +151,25 @@ impl MainContentView {
                 }
             }
             ContentMode::WaitingForNextTurn => {
-                self.next_turn_waiting_view.show(ui, theme);
+                self.next_turn_waiting_view.show(ui, theme, &self.i18n);
             }
             ContentMode::NewCheck => {
-                let action = self.new_check_view.show(ui, theme, &self.tags);
+                let action = self.new_check_view.show(ui, theme, &self.i18n, &self.tags);
                 if let Some(action) = action {
                     self.handle_new_check_action(action);
                 }
             }
             ContentMode::SourceChecks => {
                 if let Some(config) = self.source_checks_config.as_ref() {
-                    self.source_checks_view.show(
-                        ui,
-                        theme,
-                        config.title,
-                        &self.source_checks,
-                        &self.tags,
-                    );
+                    let title = self.i18n.t(config.title_key);
+                    self.source_checks_view
+                        .show(ui, theme, &self.i18n, &title, &self.source_checks, &self.tags);
                 }
             }
             ContentMode::Comments => {
-                let action = self.comments_view.show(ui, theme, &mut self.comments);
+                let action = self
+                    .comments_view
+                    .show(ui, theme, &self.i18n, &mut self.comments);
                 if let Some(action) = action {
                     self.handle_comments_action(action);
                 }

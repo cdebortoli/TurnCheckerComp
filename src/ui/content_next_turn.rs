@@ -8,7 +8,7 @@ impl MainContentView {
 
     pub(super) fn start_next_turn_wait(&mut self) -> Result<(), String> {
         let Some(current_session) = self.current_session.as_ref() else {
-            return Err("No current session is available yet.".to_string());
+            return Err(self.i18n.t("content-error-no-current-session"));
         };
 
         self.next_turn_waiting_view.start_wait(current_session);
@@ -19,7 +19,7 @@ impl MainContentView {
 
     pub(super) fn request_new_turn(&mut self) -> Result<(), String> {
         let Some(current_session) = self.current_session.as_ref() else {
-            return Err("No current session is available yet.".to_string());
+            return Err(self.i18n.t("content-error-no-current-session"));
         };
 
         if !current_session.has_new_turn() {

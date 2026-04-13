@@ -9,7 +9,7 @@ impl MainContentView {
 
         if self.current_session.is_none() {
             self.new_turn_confirmation_open = None;
-            self.error_message = Some("No current session is available yet.".to_string());
+            self.error_message = Some(self.i18n.t("content-error-no-current-session"));
             return;
         }
 

@@ -11,7 +11,7 @@ use axum::{Json, Router};
 use chrono::Utc;
 use tokio::sync::watch;
 
-use crate::database;
+use crate::{database, i18n::I18n};
 
 use super::dto::{
     ErrorResponse, HealthResponse, SyncAckRequest, SyncAckResponse, SyncConnectRequest,
@@ -81,7 +81,11 @@ impl HttpServer {
 
         tokio::spawn(async move {
             if let Err(error) = axum::serve(listener, app).await {
-                eprintln!("sync server stopped: {error}");
+                let i18n = I18n::system();
+                eprintln!(
+                    "{}",
+                    i18n.tr("server-stopped-log", &[("error", error.to_string().into())])
+                );
             }
         });
 
@@ -102,7 +106,12 @@ impl HttpServer {
         std::env::var("TURN_CHECKER_BIND_ADDR")
             .unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string())
             .parse()
-            .map_err(|error| anyhow::anyhow!("invalid bind address: {error}"))
+            .map_err(|error: std::net::AddrParseError| {
+                let i18n = I18n::system();
+                anyhow::anyhow!(
+                    i18n.tr("server-invalid-bind-address", &[("error", error.to_string().into())])
+                )
+            })
     }
 
     fn router(&self) -> Router {

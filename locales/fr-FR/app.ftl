@@ -1,10 +1,21 @@
 app-title = Compagnon Turn Checker
 app-server-starting = Démarrage du serveur de synchronisation local...
+app-launch-failed = Échec du lancement de l'interface : { $error }
 app-theme-toggle-tooltip = Basculer entre le mode clair et sombre
 app-always-on-top-disable-tooltip = Désactiver le mode toujours au premier plan
 app-always-on-top-enable-tooltip = Garder l'application au-dessus des autres fenêtres
 app-minimal-mode-disable-tooltip = Revenir à la vue complète
 app-minimal-mode-enable-tooltip = Passer à une surcouche compacte
+
+server-stopped-log = Le serveur de synchronisation s'est arrêté : { $error }
+server-invalid-bind-address = Adresse de liaison invalide : { $error }
+
+notification-url-not-configured = L'URL de notification push n'est pas configurée.
+notification-device-token-unavailable = Le jeton de l'appareil n'est pas encore disponible. Associez l'application iOS et acceptez les autorisations de notifications push.
+notification-title-new-turn = Nouveau tour
+notification-body-new-turn = L'action de nouveau tour a été reçue.
+notification-bearer-token-missing = Le jeton d'authentification des notifications push n'est pas configuré. Définissez { $env } ou pointez { $file_env } vers un fichier contenant le jeton, ou intégrez-le à la compilation via { $compile_env }.
+notification-bearer-token-file-read-failed = Impossible de lire le fichier du jeton d'authentification des notifications push à { $path } : { $error }
 
 startup-waiting = En attente...
 startup-failed = Échec du démarrage.

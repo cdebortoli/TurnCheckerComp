@@ -1,10 +1,21 @@
 app-title = Turn Checker Companion
 app-server-starting = Starting the local sync server...
+app-launch-failed = Failed to launch UI: { $error }
 app-theme-toggle-tooltip = Toggle light/dark mode
 app-always-on-top-disable-tooltip = Disable always-on-top
 app-always-on-top-enable-tooltip = Keep the app above other windows
 app-minimal-mode-disable-tooltip = Return to the full view
 app-minimal-mode-enable-tooltip = Switch to a compact overlay
+
+server-stopped-log = Sync server stopped: { $error }
+server-invalid-bind-address = Invalid bind address: { $error }
+
+notification-url-not-configured = Push notification URL is not configured.
+notification-device-token-unavailable = Device token is not available yet. Pair the iOS app and accept push notification permissions.
+notification-title-new-turn = New turn
+notification-body-new-turn = The new turn action was received.
+notification-bearer-token-missing = Push notification bearer token is not configured. Set { $env } or point { $file_env } to a file containing the token, or embed it at compile time via { $compile_env }.
+notification-bearer-token-file-read-failed = Failed to read push notification bearer token file at { $path }: { $error }
 
 startup-waiting = Waiting...
 startup-failed = Startup failed.

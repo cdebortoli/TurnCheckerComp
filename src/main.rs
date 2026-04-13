@@ -16,6 +16,7 @@ fn main() -> anyhow::Result<()> {
     let channels = channels::AppChannels::new();
 
     let i18n = i18n::I18n::system();
+    let run_i18n = i18n.clone();
     let app_title = i18n.t("app-title");
     let native_options = ui::TurnCheckerApp::native_options(&app_title);
 
@@ -33,5 +34,7 @@ fn main() -> anyhow::Result<()> {
             )))
         }),
     )
-    .map_err(|err| anyhow::anyhow!("failed to launch UI: {err}"))
+    .map_err(|err| {
+        anyhow::anyhow!(run_i18n.tr("app-launch-failed", &[("error", err.to_string().into())],))
+    })
 }

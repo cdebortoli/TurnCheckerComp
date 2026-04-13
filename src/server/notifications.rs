@@ -10,6 +10,8 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 use uuid::Uuid;
 
+use crate::i18n::{I18n, I18nValue};
+
 const PUSH_NOTIFICATION_URL: &str = "https://turn-checker-apns-relay.debortolichris.workers.dev/";
 const PUSH_NOTIFICATION_BEARER_TOKEN_ENV: &str = "TURN_CHECKER_PUSH_BEARER_TOKEN";
 const PUSH_NOTIFICATION_BEARER_TOKEN_FILE_ENV: &str = "TURN_CHECKER_PUSH_BEARER_TOKEN_FILE";
@@ -68,33 +70,32 @@ impl PushNotificationClient {
     }
 
     pub async fn send_new_turn_notification(&self) -> anyhow::Result<()> {
-        let push_notification_url = self
-            .push_notification_url
-            .as_deref()
-            .ok_or_else(|| anyhow::anyhow!("push notification URL is not configured."))?;
+        let i18n = I18n::system();
+        let push_notification_url = self.push_notification_url.as_deref().ok_or_else(|| {
+            anyhow::anyhow!(i18n.t("notification-url-not-configured"))
+        })?;
         let device_token = self.device_token().ok_or_else(|| {
-            anyhow::anyhow!(
-                "device token is not available yet. Pair the iOS app and accept push notification permissions."
-            )
+            anyhow::anyhow!(i18n.t("notification-device-token-unavailable"))
         })?;
 
         let mut data_map = Map::new();
         let new_turn_value = Value::String("new_turn".to_string());
         data_map.insert("type".to_string(), new_turn_value);
-        // let push_id = Value::String(Uuid::new_v4());
         if let Ok(id_value) = serde_json::to_value(Uuid::new_v4()) {
             data_map.insert("id".to_string(), id_value);
         }
 
         let bearer_token = push_notification_bearer_token()?;
+        let title = i18n.t("notification-title-new-turn");
+        let body = i18n.t("notification-body-new-turn");
 
         self.http_client
             .post(push_notification_url)
             .bearer_auth(&bearer_token)
             .json(&PushNotifRequest {
                 device_token: &device_token,
-                title: "New turn",
-                body: "The new turn action was received.",
+                title: &title,
+                body: &body,
                 data: data_map,
                 environment: &self.environment,
             })
@@ -148,23 +149,37 @@ fn push_notification_bearer_token() -> anyhow::Result<String> {
         return Ok(token.to_string());
     }
 
-    Err(anyhow::anyhow!(
-        "push notification bearer token is not configured. Set {} or point {} to a file containing the token, or embed it at compile time via {}.",
-        PUSH_NOTIFICATION_BEARER_TOKEN_ENV,
-        PUSH_NOTIFICATION_BEARER_TOKEN_FILE_ENV,
-        PUSH_NOTIFICATION_BEARER_TOKEN_ENV,
-    ))
+    let i18n = I18n::system();
+    Err(anyhow::anyhow!(i18n.tr(
+        "notification-bearer-token-missing",
+        &[
+            ("env", I18nValue::from(PUSH_NOTIFICATION_BEARER_TOKEN_ENV)),
+            (
+                "file_env",
+                I18nValue::from(PUSH_NOTIFICATION_BEARER_TOKEN_FILE_ENV),
+            ),
+            (
+                "compile_env",
+                I18nValue::from(PUSH_NOTIFICATION_BEARER_TOKEN_ENV),
+            ),
+        ],
+    )))
 }
 
 fn read_bearer_token_file(path: &Path) -> anyhow::Result<Option<String>> {
     match fs::read_to_string(path) {
         Ok(contents) => Ok(normalize_optional_string(Some(contents))),
         Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(anyhow::anyhow!(
-            "failed to read push notification bearer token file at {}: {}",
-            path.display(),
-            error,
-        )),
+        Err(error) => {
+            let i18n = I18n::system();
+            Err(anyhow::anyhow!(i18n.tr(
+                "notification-bearer-token-file-read-failed",
+                &[
+                    ("path", I18nValue::from(path.display().to_string())),
+                    ("error", I18nValue::from(error.to_string())),
+                ],
+            )))
+        }
     }
 }
 

@@ -84,26 +84,26 @@ field-name = Name
 field-detail = Detail
 field-source = Source
 field-tag = Tag
-field-repeat = Repeat
-field-repeat-value = Repeat value
+field-repeat = Repeat Type
+field-repeat-value = Turn
 field-mandatory = Mandatory
 field-no-tag = No tag
 
-source-game = Game
-source-global-game = Global Game
-source-blueprint = Blueprint
+source-game = Game's Turn
+source-global-game = Game
+source-blueprint = Template
 source-turn = Turn
 
-repeat-everytime = Everytime
-repeat-conditional = Conditional
-repeat-specific = Specific
-repeat-until = Until
+repeat-everytime = Each Turn
+repeat-conditional = Each [X] Turn
+repeat-specific = At Turn [X]
+repeat-until = Until Turn [X]
 
 check-mandatory = Mandatory
-repeat-badge-every-turn = Every turn
-repeat-badge-conditional = Conditional (Turn { $turn })
-repeat-badge-specific = Specific (Turn { $turn })
-repeat-badge-until = Until (Turn { $turn })
+repeat-badge-every-turn = Each turn
+repeat-badge-conditional = Each { $turn } Turn
+repeat-badge-specific = At { $turn } Turn
+repeat-badge-until = Until Turn { $turn }
 
 validation-name-required = Name is required.
 validation-field-valid-integer = { $field } must be a valid integer.

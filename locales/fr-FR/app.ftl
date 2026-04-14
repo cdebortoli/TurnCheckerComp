@@ -61,7 +61,7 @@ content-error-no-current-session = Aucune session en cours n'est encore disponib
 content-new-check-button = Nouveau Check
 content-source-game-turns-button = Checks des tours du jeu
 content-source-game-button = Checks du jeu
-content-source-template-button = Checks du modèle
+content-source-template-button = Checks du Template
 content-comments-button = Commentaires
 content-missing-comment-slot = Emplacement de commentaire manquant pour { $comment_type }.
 
@@ -83,26 +83,26 @@ new-check-title = Créer une nouveau Check
 field-name = Nom
 field-detail = Détail
 field-source = Source
-field-tag = Étiquette
-field-repeat = Répétition
-field-repeat-value = Valeur de répétition
+field-tag = Tag
+field-repeat = Type Répétition
+field-repeat-value = Tour
 field-mandatory = Obligatoire
-field-no-tag = Aucune étiquette
+field-no-tag = Aucun Tag
 
-source-game = Jeu
-source-global-game = Jeu global
-source-blueprint = Modèle
+source-game = Tours de la partie
+source-global-game = Partie
+source-blueprint = Template
 source-turn = Tour
 
-repeat-everytime = À chaque fois
-repeat-conditional = Conditionnel
-repeat-specific = Spécifique
-repeat-until = Jusqu'à
+repeat-everytime = Chaque tour
+repeat-conditional = Chaque [X] Tour
+repeat-specific = Au tour [X]
+repeat-until = Jusqu'au tour [X]
 
 check-mandatory = Obligatoire
 repeat-badge-every-turn = Chaque tour
-repeat-badge-conditional = Conditionnel (Tour { $turn })
-repeat-badge-specific = Spécifique (Tour { $turn })
+repeat-badge-conditional = Chaque { $turn } Tour
+repeat-badge-specific = Au Tour { $turn }
 repeat-badge-until = Jusqu'au tour { $turn }
 
 validation-name-required = Le nom est obligatoire.

@@ -1,6 +1,6 @@
 use crate::i18n::{I18n, I18nValue};
 use crate::models::check_source_type::CheckSourceType;
-use crate::models::{Check, CheckRepeatType};
+use crate::models::{Check, CheckRepeatType, CurrentSession};
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -31,30 +31,64 @@ impl Default for NewCheckDraft {
 }
 
 impl NewCheckDraft {
-    pub(super) fn to_check(&self, i18n: &I18n) -> Result<Check, String> {
+    pub(super) fn set_source(
+        &mut self,
+        source: CheckSourceType,
+        current_session: Option<&CurrentSession>,
+    ) {
+        self.source = source;
+        self.sync_source_dependent_fields(current_session);
+    }
+
+    pub(super) fn sync_source_dependent_fields(
+        &mut self,
+        current_session: Option<&CurrentSession>,
+    ) {
+        if !self.turn_repeat_is_locked() {
+            return;
+        }
+
+        let turn_number = current_session.map(|session| session.turn_number).unwrap_or(1);
+        self.repeat_case = CheckRepeatType::Specific(turn_number);
+        self.repeat_value = turn_number.to_string();
+    }
+
+    pub(super) fn turn_repeat_is_locked(&self) -> bool {
+        self.source == CheckSourceType::Turn
+    }
+
+    pub(super) fn to_check(
+        &self,
+        i18n: &I18n,
+        current_session: Option<&CurrentSession>,
+    ) -> Result<Check, String> {
         let name = self.name.trim();
         if name.is_empty() {
             return Err(i18n.t("validation-name-required"));
         }
 
         let repeat_field_name = i18n.t("field-repeat-value");
-        let repeat_case = match self.repeat_case {
-            CheckRepeatType::Everytime => CheckRepeatType::Everytime,
-            CheckRepeatType::Conditional(_) => CheckRepeatType::Conditional(parse_positive_i32(
-                &self.repeat_value,
-                &repeat_field_name,
-                i18n,
-            )?),
-            CheckRepeatType::Specific(_) => CheckRepeatType::Specific(parse_positive_i32(
-                &self.repeat_value,
-                &repeat_field_name,
-                i18n,
-            )?),
-            CheckRepeatType::Until(_) => CheckRepeatType::Until(parse_positive_i32(
-                &self.repeat_value,
-                &repeat_field_name,
-                i18n,
-            )?),
+        let repeat_case = if self.turn_repeat_is_locked() {
+            let current_session = current_session
+                .ok_or_else(|| i18n.t("content-error-no-current-session"))?;
+            CheckRepeatType::Specific(current_session.turn_number)
+        } else {
+            match self.repeat_case {
+                CheckRepeatType::Everytime => CheckRepeatType::Everytime,
+                CheckRepeatType::Conditional(_) => CheckRepeatType::Conditional(
+                    parse_positive_i32(&self.repeat_value, &repeat_field_name, i18n)?,
+                ),
+                CheckRepeatType::Specific(_) => CheckRepeatType::Specific(parse_positive_i32(
+                    &self.repeat_value,
+                    &repeat_field_name,
+                    i18n,
+                )?),
+                CheckRepeatType::Until(_) => CheckRepeatType::Until(parse_positive_i32(
+                    &self.repeat_value,
+                    &repeat_field_name,
+                    i18n,
+                )?),
+            }
         };
 
         let mut check = Check::new(name);

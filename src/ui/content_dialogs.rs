@@ -154,7 +154,13 @@ impl MainContentView {
                 self.next_turn_waiting_view.show(ui, theme, &self.i18n);
             }
             ContentMode::NewCheck => {
-                let action = self.new_check_view.show(ui, theme, &self.i18n, &self.tags);
+                let action = self.new_check_view.show(
+                    ui,
+                    theme,
+                    &self.i18n,
+                    &self.tags,
+                    self.current_session.as_ref(),
+                );
                 if let Some(action) = action {
                     self.handle_new_check_action(action);
                 }

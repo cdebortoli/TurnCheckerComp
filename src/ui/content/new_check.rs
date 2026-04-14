@@ -4,7 +4,7 @@ use super::helpers::{find_tag_by_uuid, tag_fill_color};
 use super::new_check_draft::NewCheckDraft;
 use crate::i18n::I18n;
 use crate::models::check_source_type::CheckSourceType;
-use crate::models::{Check, CheckRepeatType, Tag};
+use crate::models::{Check, CheckRepeatType, CurrentSession, Tag};
 use crate::ui::content::toggle_button::toggle;
 use crate::ui::theme::Theme;
 
@@ -26,6 +26,7 @@ impl NewCheckView {
         theme: &Theme,
         i18n: &I18n,
         tags: &[Tag],
+        current_session: Option<&CurrentSession>,
     ) -> Option<NewCheckAction> {
         self.show_new_check_heading(ui, theme, i18n);
 
@@ -34,14 +35,14 @@ impl NewCheckView {
             self.show_new_check_text_fields(ui, theme, i18n);
             ui.horizontal(|ui| {
                 self.show_new_check_tag_selector(ui, theme, i18n, tags);
-                self.show_new_check_source_selector(ui, theme, i18n);
+                self.show_new_check_source_selector(ui, theme, i18n, current_session);
                 ui.vertical(|ui| {
                     self.show_new_check_repeat_selector(ui, theme, i18n);
                     self.show_new_check_repeat_value(ui, theme, i18n);
                 });
             });
             self.show_new_check_toggles(ui, theme, i18n);
-            action = self.show_new_check_actions(ui, i18n);
+            action = self.show_new_check_actions(ui, i18n, current_session);
         });
 
         action
@@ -57,7 +58,14 @@ impl NewCheckView {
     }
 
     fn show_new_check_text_fields(&mut self, ui: &mut egui::Ui, theme: &Theme, i18n: &I18n) {
-        labeled_text_edit(ui, theme, &i18n.t("field-name"), &mut self.draft.name, false, None);
+        labeled_text_edit(
+            ui,
+            theme,
+            &i18n.t("field-name"),
+            &mut self.draft.name,
+            false,
+            None,
+        );
         labeled_text_edit(
             ui,
             theme,
@@ -73,6 +81,7 @@ impl NewCheckView {
         ui: &mut egui::Ui,
         theme: &Theme,
         i18n: &I18n,
+        current_session: Option<&CurrentSession>,
     ) {
         ui.label(RichText::new(i18n.t("field-source")).color(theme.text_secondary));
         egui::ComboBox::from_id_salt("new_check_source")
@@ -86,15 +95,10 @@ impl NewCheckView {
                 ] {
                     let label = source_label(i18n, &source);
                     let is_selected = self.draft.source == source;
-                    if show_colored_option(
-                        ui,
-                        &label,
-                        source_color(&source, theme),
-                        is_selected,
-                    )
-                    .clicked()
+                    if show_colored_option(ui, &label, source_color(&source, theme), is_selected)
+                        .clicked()
                     {
-                        self.draft.source = source;
+                        self.draft.set_source(source, current_session);
                         ui.close();
                     }
                 }
@@ -135,57 +139,53 @@ impl NewCheckView {
         ui.add_space(theme.spacing_md);
     }
 
-    fn show_new_check_repeat_selector(
-        &mut self,
-        ui: &mut egui::Ui,
-        theme: &Theme,
-        i18n: &I18n,
-    ) {
+    fn show_new_check_repeat_selector(&mut self, ui: &mut egui::Ui, theme: &Theme, i18n: &I18n) {
+        let repeat_locked = self.draft.turn_repeat_is_locked();
         ui.horizontal(|ui| {
             ui.label(RichText::new(i18n.t("field-repeat")).color(theme.text_secondary));
-            egui::ComboBox::from_id_salt("new_check_repeat_kind")
-                .selected_text(repeat_label(i18n, &self.draft.repeat_case))
-                .show_ui(ui, |ui| {
-                    for repeat_case in [
-                        CheckRepeatType::Everytime,
-                        CheckRepeatType::Conditional(1),
-                        CheckRepeatType::Specific(1),
-                        CheckRepeatType::Until(1),
-                    ] {
-                        let label = repeat_label(i18n, &repeat_case);
-                        if show_colored_option(
-                            ui,
-                            &label,
-                            repeat_color(&repeat_case, theme),
-                            same_repeat_variant(&self.draft.repeat_case, &repeat_case),
-                        )
-                        .clicked()
-                        {
-                            self.draft.repeat_case = repeat_case;
-                            self.normalize_repeat_value();
-                            ui.close();
+            ui.add_enabled_ui(!repeat_locked, |ui| {
+                egui::ComboBox::from_id_salt("new_check_repeat_kind")
+                    .selected_text(repeat_label(i18n, &self.draft.repeat_case))
+                    .show_ui(ui, |ui| {
+                        for repeat_case in [
+                            CheckRepeatType::Everytime,
+                            CheckRepeatType::Conditional(1),
+                            CheckRepeatType::Specific(1),
+                            CheckRepeatType::Until(1),
+                        ] {
+                            let label = repeat_label(i18n, &repeat_case);
+                            if show_colored_option(
+                                ui,
+                                &label,
+                                repeat_color(&repeat_case, theme),
+                                same_repeat_variant(&self.draft.repeat_case, &repeat_case),
+                            )
+                            .clicked()
+                            {
+                                self.draft.repeat_case = repeat_case;
+                                self.normalize_repeat_value();
+                                ui.close();
+                            }
                         }
-                    }
-                });
+                    });
+            });
         });
     }
 
-    fn show_new_check_repeat_value(
-        &mut self,
-        ui: &mut egui::Ui,
-        theme: &Theme,
-        i18n: &I18n,
-    ) {
+    fn show_new_check_repeat_value(&mut self, ui: &mut egui::Ui, theme: &Theme, i18n: &I18n) {
         if repeat_requires_value(&self.draft.repeat_case) {
+            let repeat_locked = self.draft.turn_repeat_is_locked();
             ui.horizontal(|ui| {
-                labeled_text_edit(
-                    ui,
-                    theme,
-                    &i18n.t("field-repeat-value"),
-                    &mut self.draft.repeat_value,
-                    false,
-                    Some(40.0),
-                );
+                ui.add_enabled_ui(!repeat_locked, |ui| {
+                    labeled_text_edit(
+                        ui,
+                        theme,
+                        &i18n.t("field-repeat-value"),
+                        &mut self.draft.repeat_value,
+                        false,
+                        Some(40.0),
+                    );
+                });
             });
         } else {
             ui.add_space(theme.spacing_md);
@@ -200,7 +200,12 @@ impl NewCheckView {
         ui.add_space(theme.spacing_lg);
     }
 
-    fn show_new_check_actions(&mut self, ui: &mut egui::Ui, i18n: &I18n) -> Option<NewCheckAction> {
+    fn show_new_check_actions(
+        &mut self,
+        ui: &mut egui::Ui,
+        i18n: &I18n,
+        current_session: Option<&CurrentSession>,
+    ) -> Option<NewCheckAction> {
         let mut action = None;
 
         ui.horizontal(|ui| {
@@ -214,7 +219,7 @@ impl NewCheckView {
                 .add_enabled(save_enabled, egui::Button::new(i18n.t("action-save")))
                 .clicked()
             {
-                action = Some(match self.draft.to_check(i18n) {
+                action = Some(match self.draft.to_check(i18n, current_session) {
                     Ok(check) => NewCheckAction::SaveRequested(check),
                     Err(error) => NewCheckAction::ValidationFailed(error),
                 });

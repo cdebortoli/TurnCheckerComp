@@ -168,8 +168,17 @@ impl MainContentView {
             ContentMode::SourceChecks => {
                 if let Some(config) = self.source_checks_config.as_ref() {
                     let title = self.i18n.t(config.title_key);
-                    self.source_checks_view
-                        .show(ui, theme, &self.i18n, &title, &self.source_checks, &self.tags);
+                    let action = self.source_checks_view.show(
+                        ui,
+                        theme,
+                        &self.i18n,
+                        &title,
+                        &self.source_checks,
+                        &self.tags,
+                    );
+                    if let Some(action) = action {
+                        self.handle_source_checks_action(action);
+                    }
                 }
             }
             ContentMode::Comments => {

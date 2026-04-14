@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 #[derive(Clone)]
 pub(super) struct NewCheckDraft {
+    existing_check: Option<Check>,
     pub(super) name: String,
     pub(super) detail: String,
     pub(super) selected_tag_uuid: Option<Uuid>,
@@ -18,6 +19,7 @@ pub(super) struct NewCheckDraft {
 impl Default for NewCheckDraft {
     fn default() -> Self {
         Self {
+            existing_check: None,
             name: String::new(),
             detail: String::new(),
             selected_tag_uuid: None,
@@ -31,6 +33,28 @@ impl Default for NewCheckDraft {
 }
 
 impl NewCheckDraft {
+    pub(super) fn from_check(check: &Check) -> Self {
+        Self {
+            existing_check: Some(check.clone()),
+            name: check.name.clone(),
+            detail: check.detail.clone().unwrap_or_default(),
+            selected_tag_uuid: check.tag_uuid,
+            source: check.source.clone(),
+            repeat_case: check.repeat_case.clone(),
+            repeat_value: repeat_value_for(&check.repeat_case),
+            is_mandatory: check.is_mandatory,
+            is_checked: check.is_checked,
+        }
+    }
+
+    pub(super) fn is_editing(&self) -> bool {
+        self.existing_check.is_some()
+    }
+
+    pub(super) fn source_is_locked(&self) -> bool {
+        self.is_editing()
+    }
+
     pub(super) fn set_source(
         &mut self,
         source: CheckSourceType,
@@ -91,7 +115,11 @@ impl NewCheckDraft {
             }
         };
 
-        let mut check = Check::new(name);
+        let mut check = self
+            .existing_check
+            .clone()
+            .unwrap_or_else(|| Check::new(name));
+        check.name = name.to_string();
         check.detail = trimmed_option(&self.detail);
         check.tag_uuid = self.selected_tag_uuid;
         check.source = self.source.clone();
@@ -100,6 +128,15 @@ impl NewCheckDraft {
         check.is_checked = self.is_checked;
         check.is_sent = false;
         Ok(check)
+    }
+}
+
+fn repeat_value_for(repeat_case: &CheckRepeatType) -> String {
+    match repeat_case {
+        CheckRepeatType::Everytime => String::new(),
+        CheckRepeatType::Conditional(value)
+        | CheckRepeatType::Specific(value)
+        | CheckRepeatType::Until(value) => value.to_string(),
     }
 }
 

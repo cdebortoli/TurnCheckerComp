@@ -1,6 +1,6 @@
 use super::NewCheckDraft;
 use crate::i18n::I18n;
-use crate::models::{check_source_type::CheckSourceType, CheckRepeatType, CurrentSession};
+use crate::models::{check_source_type::CheckSourceType, Check, CheckRepeatType, CurrentSession};
 use uuid::Uuid;
 
 fn test_i18n() -> I18n {
@@ -103,4 +103,38 @@ fn turn_source_requires_current_session() {
         .expect_err("turn source should require current session");
 
     assert_eq!(error, "No current session is available yet.");
+}
+
+#[test]
+fn editing_existing_check_preserves_identity_and_marks_unsent() {
+    let mut existing = Check::new("Scout");
+    existing.id = 42;
+    existing.position = 7;
+    existing.source = CheckSourceType::Blueprint;
+    existing.repeat_case = CheckRepeatType::Conditional(3);
+    existing.is_checked = true;
+    existing.is_sent = true;
+
+    let mut draft = NewCheckDraft::from_check(&existing);
+    draft.name = "Updated Scout".to_string();
+    draft.detail = "  Updated detail  ".to_string();
+    draft.repeat_value = "5".to_string();
+    draft.is_mandatory = true;
+
+    let updated = draft
+        .to_check(&test_i18n(), None)
+        .expect("edited draft should convert");
+
+    assert!(draft.is_editing());
+    assert!(draft.source_is_locked());
+    assert_eq!(updated.id, existing.id);
+    assert_eq!(updated.uuid, existing.uuid);
+    assert_eq!(updated.position, existing.position);
+    assert_eq!(updated.source, CheckSourceType::Blueprint);
+    assert_eq!(updated.name, "Updated Scout");
+    assert_eq!(updated.detail.as_deref(), Some("Updated detail"));
+    assert_eq!(updated.repeat_case, CheckRepeatType::Conditional(5));
+    assert!(updated.is_mandatory);
+    assert!(updated.is_checked);
+    assert!(!updated.is_sent);
 }

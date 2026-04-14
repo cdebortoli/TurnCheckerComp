@@ -122,6 +122,14 @@ impl MainContentView {
         Ok(())
     }
 
+    pub(super) fn update_existing_check(&mut self, check: Check) -> Result<(), String> {
+        let connection = database::establish_connection().map_err(|err| err.to_string())?;
+        database::checks::update(&connection, &check).map_err(|err| err.to_string())?;
+        self.needs_reload = true;
+        self.reload_checks_if_needed();
+        Ok(())
+    }
+
     pub(super) fn count_unsent_records(&self) -> Result<usize, String> {
         let connection = database::establish_connection().map_err(|err| err.to_string())?;
         let checks = database::checks::count_unsent(&connection).map_err(|err| err.to_string())?;

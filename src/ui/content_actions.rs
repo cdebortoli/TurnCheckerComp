@@ -1,6 +1,7 @@
 use super::checklist::ChecklistAction;
 use super::comments::CommentsAction;
 use super::new_check::NewCheckAction;
+use super::source_checks::SourceChecksAction;
 use super::{ContentMode, MainContentView};
 
 impl MainContentView {
@@ -37,6 +38,11 @@ impl MainContentView {
                     self.error_message = Some(error);
                 }
             }
+            ChecklistAction::CheckSelected(check) => {
+                self.new_check_view.start_editing(&check);
+                self.mode = ContentMode::NewCheck;
+                self.error_message = None;
+            }
         }
     }
 
@@ -55,10 +61,11 @@ impl MainContentView {
     pub(super) fn handle_new_check_action(&mut self, action: NewCheckAction) {
         match action {
             NewCheckAction::Cancelled => {
+                self.new_check_view.reset();
                 self.mode = ContentMode::General;
                 self.error_message = None;
             }
-            NewCheckAction::SaveRequested(check) => match self.insert_new_check(check) {
+            NewCheckAction::SaveNewRequested(check) => match self.insert_new_check(check) {
                 Ok(()) => {
                     self.new_check_view.reset();
                     self.mode = ContentMode::General;
@@ -66,8 +73,28 @@ impl MainContentView {
                 }
                 Err(error) => self.error_message = Some(error),
             },
+            NewCheckAction::SaveExistingRequested(check) => {
+                match self.update_existing_check(check) {
+                    Ok(()) => {
+                        self.new_check_view.reset();
+                        self.mode = ContentMode::General;
+                        self.error_message = None;
+                    }
+                    Err(error) => self.error_message = Some(error),
+                }
+            }
             NewCheckAction::ValidationFailed(error) => {
                 self.error_message = Some(error);
+            }
+        }
+    }
+
+    pub(super) fn handle_source_checks_action(&mut self, action: SourceChecksAction) {
+        match action {
+            SourceChecksAction::CheckSelected(check) => {
+                self.new_check_view.start_editing(&check);
+                self.mode = ContentMode::NewCheck;
+                self.error_message = None;
             }
         }
     }

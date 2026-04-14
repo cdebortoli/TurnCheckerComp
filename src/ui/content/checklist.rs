@@ -12,6 +12,7 @@ pub(super) struct ChecklistView {
 
 pub(super) enum ChecklistAction {
     CheckToggled { check: Check, is_checked: bool },
+    CheckSelected(Check),
 }
 
 impl ChecklistView {
@@ -32,11 +33,19 @@ impl ChecklistView {
         }
 
         self.check_cards_view
-            .show(ui, theme, i18n, checks, tags, CheckCardDisplayMode::Editable)
+            .show(
+                ui,
+                theme,
+                i18n,
+                checks,
+                tags,
+                CheckCardDisplayMode::Toggleable,
+            )
             .map(|action| match action {
                 CheckCardsAction::CheckToggled { check, is_checked } => {
                     ChecklistAction::CheckToggled { check, is_checked }
                 }
+                CheckCardsAction::CheckSelected(check) => ChecklistAction::CheckSelected(check),
             })
     }
 
@@ -59,7 +68,9 @@ impl ChecklistView {
                 );
             }
             None => {
-                ui.label(RichText::new(i18n.t("checklist-current-turn")).color(theme.text_secondary));
+                ui.label(
+                    RichText::new(i18n.t("checklist-current-turn")).color(theme.text_secondary),
+                );
             }
         }
         ui.add_space(theme.spacing_md);

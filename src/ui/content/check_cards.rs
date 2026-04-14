@@ -13,12 +13,13 @@ pub(super) struct CheckCardsView;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum CheckCardDisplayMode {
-    Editable,
+    Toggleable,
     ReadOnly,
 }
 
 pub(super) enum CheckCardsAction {
     CheckToggled { check: Check, is_checked: bool },
+    CheckSelected(Check),
 }
 
 impl CheckCardsView {
@@ -62,7 +63,7 @@ impl CheckCardsView {
     ) -> Option<CheckCardsAction> {
         let mut selected_checked = check.is_checked;
 
-        egui::Frame::new()
+        let card = egui::Frame::new()
             .fill(theme.bg_list_element)
             .corner_radius(theme.corner_radius)
             .inner_margin(theme.card_padding)
@@ -78,11 +79,20 @@ impl CheckCardsView {
                 );
             });
 
-        if display_mode == CheckCardDisplayMode::Editable && selected_checked != check.is_checked {
+        let card_response = ui.interact(
+            card.response.rect,
+            ui.make_persistent_id(("check_card", check.uuid)),
+            egui::Sense::click(),
+        );
+
+        if display_mode == CheckCardDisplayMode::Toggleable && selected_checked != check.is_checked
+        {
             Some(CheckCardsAction::CheckToggled {
                 check,
                 is_checked: selected_checked,
             })
+        } else if card_response.clicked() {
+            Some(CheckCardsAction::CheckSelected(check))
         } else {
             None
         }
@@ -189,7 +199,7 @@ impl CheckCardsView {
         display_mode: CheckCardDisplayMode,
     ) {
         match display_mode {
-            CheckCardDisplayMode::Editable => {
+            CheckCardDisplayMode::Toggleable => {
                 ui.add(toggle(selected_checked, theme));
             }
             CheckCardDisplayMode::ReadOnly => {}

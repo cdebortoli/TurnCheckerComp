@@ -1,3 +1,4 @@
+use super::checklist::ChecklistAction;
 use super::helpers::{apply_check_status_update, apply_comment_content_update};
 use super::{ContentMode, MainContentView};
 use crate::i18n::I18n;
@@ -157,4 +158,16 @@ fn cancel_next_turn_wait_clears_wait_state_and_sets_error() {
     assert!(!view.is_waiting_for_next_turn());
     assert_eq!(view.mode, ContentMode::General);
     assert_eq!(view.error_message.as_deref(), Some("push failed"));
+}
+
+#[test]
+fn selecting_check_from_editable_list_opens_edit_mode() {
+    let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
+    let mut view = MainContentView::new(content_refresh_rx, test_i18n());
+    let check = Check::new("Scout");
+
+    view.handle_checklist_action(ChecklistAction::CheckSelected(check));
+
+    assert_eq!(view.mode, ContentMode::NewCheck);
+    assert!(view.error_message.is_none());
 }

@@ -15,7 +15,8 @@ pub(super) struct NewCheckView {
 
 pub(super) enum NewCheckAction {
     Cancelled,
-    SaveRequested(Check),
+    SaveNewRequested(Check),
+    SaveExistingRequested(Check),
     ValidationFailed(String),
 }
 
@@ -46,6 +47,14 @@ impl NewCheckView {
         });
 
         action
+    }
+
+    pub(super) fn prepare_new(&mut self) {
+        self.reset_new_check_form();
+    }
+
+    pub(super) fn start_editing(&mut self, check: &Check) {
+        self.draft = NewCheckDraft::from_check(check);
     }
 
     pub(super) fn reset(&mut self) {
@@ -84,25 +93,32 @@ impl NewCheckView {
         current_session: Option<&CurrentSession>,
     ) {
         ui.label(RichText::new(i18n.t("field-source")).color(theme.text_secondary));
-        egui::ComboBox::from_id_salt("new_check_source")
-            .selected_text(source_label(i18n, &self.draft.source))
-            .show_ui(ui, |ui| {
-                for source in [
-                    CheckSourceType::Game,
-                    CheckSourceType::GlobalGame,
-                    CheckSourceType::Blueprint,
-                    CheckSourceType::Turn,
-                ] {
-                    let label = source_label(i18n, &source);
-                    let is_selected = self.draft.source == source;
-                    if show_colored_option(ui, &label, source_color(&source, theme), is_selected)
+        ui.add_enabled_ui(!self.draft.source_is_locked(), |ui| {
+            egui::ComboBox::from_id_salt("new_check_source")
+                .selected_text(source_label(i18n, &self.draft.source))
+                .show_ui(ui, |ui| {
+                    for source in [
+                        CheckSourceType::Game,
+                        CheckSourceType::GlobalGame,
+                        CheckSourceType::Blueprint,
+                        CheckSourceType::Turn,
+                    ] {
+                        let label = source_label(i18n, &source);
+                        let is_selected = self.draft.source == source;
+                        if show_colored_option(
+                            ui,
+                            &label,
+                            source_color(&source, theme),
+                            is_selected,
+                        )
                         .clicked()
-                    {
-                        self.draft.set_source(source, current_session);
-                        ui.close();
+                        {
+                            self.draft.set_source(source, current_session);
+                            ui.close();
+                        }
                     }
-                }
-            });
+                });
+        });
         ui.add_space(theme.spacing_md);
     }
 
@@ -220,7 +236,10 @@ impl NewCheckView {
                 .clicked()
             {
                 action = Some(match self.draft.to_check(i18n, current_session) {
-                    Ok(check) => NewCheckAction::SaveRequested(check),
+                    Ok(check) if self.draft.is_editing() => {
+                        NewCheckAction::SaveExistingRequested(check)
+                    }
+                    Ok(check) => NewCheckAction::SaveNewRequested(check),
                     Err(error) => NewCheckAction::ValidationFailed(error),
                 });
             }

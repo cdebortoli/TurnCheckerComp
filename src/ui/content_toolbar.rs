@@ -47,6 +47,10 @@ impl MainContentView {
                     .button(RichText::new(self.i18n.t("action-back")).color(theme.text_primary))
                     .clicked()
                 {
+                    // Seems not needed
+                    //if self.mode == ContentMode::NewCheck {
+                    // self.new_check_view.reset();
+                    //}
                     self.mode = ContentMode::General;
                     self.error_message = None;
                 }
@@ -82,6 +86,9 @@ impl MainContentView {
             .corner_radius(theme.corner_radius);
 
         if ui.add(button).clicked() {
+            if target_mode == ContentMode::NewCheck {
+                self.new_check_view.prepare_new();
+            }
             self.mode = target_mode;
             self.error_message = None;
         }
@@ -99,15 +106,14 @@ impl MainContentView {
                 .source_checks_config
                 .as_ref()
                 .is_some_and(|config| config.title_key == title_key && config.source == source);
-        let button = egui::Button::new(
-            RichText::new(self.i18n.t(title_key)).color(theme.text_primary),
-        )
-        .fill(if is_active {
-            theme.accent
-        } else {
-            theme.bg_secondary
-        })
-        .corner_radius(theme.corner_radius);
+        let button =
+            egui::Button::new(RichText::new(self.i18n.t(title_key)).color(theme.text_primary))
+                .fill(if is_active {
+                    theme.accent
+                } else {
+                    theme.bg_secondary
+                })
+                .corner_radius(theme.corner_radius);
 
         if ui.add(button).clicked() {
             self.mode = ContentMode::SourceChecks;

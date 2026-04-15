@@ -8,6 +8,7 @@ use eframe::egui;
 use egui::RichText;
 use tokio::runtime::Runtime;
 
+use self::views::main_content_view::ContentAction;
 use crate::{channels::UiChannels, i18n::I18n, platform, server};
 
 use self::components::round_icon_button::round_icon_button;
@@ -493,5 +494,37 @@ impl eframe::App for TurnCheckerApp {
                     );
                 }
             });
+    }
+}
+
+impl TurnCheckerApp {
+    pub fn handle_content_action(&mut self, action: ContentAction) {
+        match action {
+            ContentAction::NewTurnNotifRequested => self.new_turn_notif(),
+            ContentAction::RestartRequested => self.restart_to_pairing(),
+        }
+    }
+
+    fn new_turn_notif(&mut self) {
+        let push_notification_client = self.push_notification_client.clone();
+        match self
+            .runtime
+            .block_on(async move { push_notification_client.send_new_turn_notification().await })
+        {
+            Ok(()) => {}
+            Err(error) => self.content.cancel_next_turn_wait(error.to_string()),
+        }
+    }
+
+    fn restart_to_pairing(&mut self) {
+        match crate::database::reset_database() {
+            Ok(()) => {
+                self.pairing.pairing_state().reset();
+                self.content.prepare_for_restart();
+                let next_version = (*self._channels.content_refresh_tx.borrow()).wrapping_add(1);
+                let _ = self._channels.content_refresh_tx.send(next_version);
+            }
+            Err(error) => self.content.set_error_message(error.to_string()),
+        }
     }
 }

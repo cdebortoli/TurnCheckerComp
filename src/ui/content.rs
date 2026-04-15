@@ -1,4 +1,3 @@
-mod check_cards;
 mod checklist;
 mod comments;
 #[path = "content_actions.rs"]
@@ -8,14 +7,13 @@ mod database_ops;
 #[path = "content_dialogs.rs"]
 mod dialogs;
 #[path = "content_helpers.rs"]
-mod helpers;
+pub(crate) mod helpers;
 mod new_check;
 mod new_check_draft;
 #[path = "content_next_turn.rs"]
 mod next_turn;
 mod next_turn_waiting;
 mod source_checks;
-mod toggle_button;
 #[path = "content_toolbar.rs"]
 mod toolbar;
 

@@ -1,6 +1,8 @@
 use eframe::egui::{self, RichText};
 
-use super::check_cards::{CheckCardDisplayMode, CheckCardsAction, CheckCardsView};
+use crate::ui::components::check_cards::{
+    CheckCardDisplayMode, CheckCardsAction, CheckCardsView,
+};
 use crate::i18n::{I18n, I18nValue};
 use crate::models::{Check, CurrentSession, Tag};
 use crate::ui::theme::Theme;

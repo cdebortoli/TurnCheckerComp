@@ -1,3 +1,4 @@
+mod components;
 mod content;
 mod pairing;
 mod startup;
@@ -9,6 +10,7 @@ use tokio::runtime::Runtime;
 
 use crate::{channels::UiChannels, i18n::I18n, platform, server};
 
+use self::components::round_icon_button::round_icon_button;
 use self::content::MainContentView;
 use self::pairing::PairingView;
 use self::startup::StartupController;
@@ -273,54 +275,12 @@ impl TurnCheckerApp {
         }
     }
 
-    fn show_round_icon_button(
-        ui: &mut egui::Ui,
-        theme: &theme::Theme,
-        size: egui::Vec2,
-        active: bool,
-        fill_override: Option<egui::Color32>,
-        draw_icon: impl FnOnce(&egui::Painter, egui::Rect, egui::Color32, egui::Color32),
-    ) -> egui::Response {
-        let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click());
-
-        if ui.is_rect_visible(rect) {
-            let fill = if let Some(fill) = fill_override {
-                fill
-            } else if active || response.hovered() {
-                theme.bg_turn_card
-            } else {
-                theme.bg_secondary
-            };
-            let stroke = egui::Stroke::new(
-                1.0,
-                if active {
-                    theme.accent
-                } else {
-                    theme.text_muted
-                },
-            );
-            let center = rect.center();
-            let button_radius = rect.width() * 0.5;
-
-            ui.painter().circle(center, button_radius, fill, stroke);
-            let icon_color = if active {
-                theme.accent
-            } else {
-                theme.text_primary
-            };
-            draw_icon(ui.painter(), rect, fill, icon_color);
-        }
-
-        response
-    }
-
     fn show_theme_toggle_button(
         ui: &mut egui::Ui,
         theme: &theme::Theme,
         i18n: &I18n,
     ) -> egui::Response {
-        Self::show_round_icon_button(
-            ui,
+        ui.add(round_icon_button(
             theme,
             egui::vec2(TITLE_BAR_BUTTON_SIZE, TITLE_BAR_BUTTON_SIZE),
             false,
@@ -335,7 +295,7 @@ impl TurnCheckerApp {
                     fill,
                 );
             },
-        )
+        ))
         .on_hover_text(i18n.t("app-theme-toggle-tooltip"))
     }
 
@@ -345,8 +305,7 @@ impl TurnCheckerApp {
         active: bool,
         i18n: &I18n,
     ) -> egui::Response {
-        Self::show_round_icon_button(
-            ui,
+        ui.add(round_icon_button(
             theme,
             egui::vec2(TITLE_BAR_BUTTON_SIZE, TITLE_BAR_BUTTON_SIZE),
             active,
@@ -386,7 +345,7 @@ impl TurnCheckerApp {
                     stroke,
                 );
             },
-        )
+        ))
         .on_hover_text(if active {
             i18n.t("app-always-on-top-disable-tooltip")
         } else {
@@ -408,8 +367,7 @@ impl TurnCheckerApp {
         let fill_override = minimal_mode
             .then(|| Self::with_alpha(theme.bg_turn_card, MINIMAL_MODE_BUTTON_BG_ALPHA));
 
-        Self::show_round_icon_button(
-            ui,
+        ui.add(round_icon_button(
             theme,
             size,
             minimal_mode,
@@ -435,7 +393,7 @@ impl TurnCheckerApp {
                     );
                 }
             },
-        )
+        ))
         .on_hover_text(if minimal_mode {
             i18n.t("app-minimal-mode-disable-tooltip")
         } else {

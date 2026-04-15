@@ -1,29 +1,29 @@
 use eframe::egui::{self, RichText};
 use egui::Color32;
 
-use super::helpers::{find_tag_by_uuid, show_sent_status_icon, show_tag_capsule};
+use crate::ui::content::helpers::{find_tag_by_uuid, show_sent_status_icon, show_tag_capsule};
 use crate::i18n::{I18n, I18nValue};
 use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType, Tag};
-use crate::ui::content::toggle_button::toggle;
+use crate::ui::components::toggle_button::toggle;
 use crate::ui::theme::Theme;
 
 #[derive(Default)]
-pub(super) struct CheckCardsView;
+pub(crate) struct CheckCardsView;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) enum CheckCardDisplayMode {
+pub(crate) enum CheckCardDisplayMode {
     Toggleable,
     ReadOnly,
 }
 
-pub(super) enum CheckCardsAction {
+pub(crate) enum CheckCardsAction {
     CheckToggled { check: Check, is_checked: bool },
     CheckSelected(Check),
 }
 
 impl CheckCardsView {
-    pub(super) fn show(
+    pub(crate) fn show(
         &mut self,
         ui: &mut egui::Ui,
         theme: &Theme,

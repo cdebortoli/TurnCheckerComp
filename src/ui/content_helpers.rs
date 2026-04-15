@@ -36,7 +36,7 @@ pub(super) fn find_comment_by_type_mut(
         .find(|comment| comment.comment_type == comment_type)
 }
 
-pub(super) fn find_tag_by_uuid(tags: &[Tag], tag_uuid: Option<Uuid>) -> Option<&Tag> {
+pub(crate) fn find_tag_by_uuid(tags: &[Tag], tag_uuid: Option<Uuid>) -> Option<&Tag> {
     let tag_uuid = tag_uuid?;
     tags.iter().find(|tag| tag.uuid == tag_uuid)
 }
@@ -61,7 +61,7 @@ fn tag_text_color(tag: &Tag) -> egui::Color32 {
     parse_hex_color(&tag.text_color).unwrap_or(egui::Color32::WHITE)
 }
 
-pub(super) fn show_sent_status_icon(ui: &mut egui::Ui, theme: &Theme, is_sent: bool) {
+pub(crate) fn show_sent_status_icon(ui: &mut egui::Ui, theme: &Theme, is_sent: bool) {
     let circle_color = if is_sent {
         eframe::egui::Color32::from_rgba_premultiplied(48, 209, 88, 220)
     } else {
@@ -109,7 +109,7 @@ pub(super) fn show_sent_status_icon(ui: &mut egui::Ui, theme: &Theme, is_sent: b
     }
 }
 
-pub(super) fn show_tag_capsule(ui: &mut egui::Ui, tag: &Tag) {
+pub(crate) fn show_tag_capsule(ui: &mut egui::Ui, tag: &Tag) {
     egui::Frame::new()
         .fill(tag_fill_color(tag))
         .corner_radius(999.0)

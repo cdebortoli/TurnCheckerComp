@@ -5,7 +5,7 @@ use super::new_check_draft::NewCheckDraft;
 use crate::i18n::I18n;
 use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType, CurrentSession, Tag};
-use crate::ui::content::toggle_button::toggle;
+use crate::ui::components::toggle_button::toggle;
 use crate::ui::theme::Theme;
 
 #[derive(Default)]

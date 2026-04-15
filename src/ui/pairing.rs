@@ -1,7 +1,7 @@
 use eframe::egui::{self, RichText};
 use qrcode::QrCode;
 
-use super::content::ContentAction;
+use super::main_content_view::ContentAction;
 use super::theme::Theme;
 use super::TurnCheckerApp;
 use crate::{i18n::I18n, server};

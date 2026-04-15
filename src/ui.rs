@@ -1,5 +1,5 @@
 mod components;
-mod content;
+mod main_content_view;
 mod pairing;
 mod startup;
 mod theme;
@@ -11,7 +11,7 @@ use tokio::runtime::Runtime;
 use crate::{channels::UiChannels, i18n::I18n, platform, server};
 
 use self::components::round_icon_button::round_icon_button;
-use self::content::MainContentView;
+use self::main_content_view::MainContentView;
 use self::pairing::PairingView;
 use self::startup::StartupController;
 

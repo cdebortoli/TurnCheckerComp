@@ -4,7 +4,7 @@ use tokio::sync::watch;
 
 use crate::{database, i18n::{I18n, I18nValue}, server};
 
-use super::pairing::PairingView;
+use super::pairing_view::PairingView;
 use super::theme::Theme;
 use egui::RichText;
 

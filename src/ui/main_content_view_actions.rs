@@ -1,7 +1,7 @@
-use super::checklist::ChecklistAction;
-use super::comments::CommentsAction;
-use super::new_check::NewCheckAction;
-use super::source_checks::SourceChecksAction;
+use super::checklist_view::ChecklistAction;
+use super::comments_view::CommentsAction;
+use super::new_check_view::NewCheckAction;
+use super::source_checks_view::SourceChecksAction;
 use super::{ContentMode, MainContentView};
 
 impl MainContentView {

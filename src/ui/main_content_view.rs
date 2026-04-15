@@ -1,17 +1,17 @@
-mod checklist;
-mod comments;
+mod checklist_view;
+mod comments_view;
 #[path = "main_content_view_actions.rs"]
 mod content_actions;
 #[path = "main_content_view_database.rs"]
 mod database_ops;
 #[path = "main_content_view_dialogs.rs"]
 mod dialogs;
-mod new_check;
+mod new_check_view;
 mod new_check_draft;
 #[path = "main_content_view_next_turn.rs"]
 mod next_turn;
-mod next_turn_waiting;
-mod source_checks;
+mod next_turn_waiting_view;
+mod source_checks_view;
 #[path = "main_content_view_toolbar.rs"]
 mod toolbar;
 
@@ -21,11 +21,11 @@ use crate::ui::theme::Theme;
 use eframe::egui;
 use tokio::sync::watch;
 
-use self::checklist::ChecklistView;
-use self::comments::CommentsView;
-use self::new_check::NewCheckView;
-use self::next_turn_waiting::NextTurnWaitingView;
-use self::source_checks::SourceChecksView;
+use self::checklist_view::ChecklistView;
+use self::comments_view::CommentsView;
+use self::new_check_view::NewCheckView;
+use self::next_turn_waiting_view::NextTurnWaitingView;
+use self::source_checks_view::SourceChecksView;
 
 pub struct MainContentView {
     i18n: I18n,

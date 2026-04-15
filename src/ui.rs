@@ -1,6 +1,6 @@
 mod components;
 mod main_content_view;
-mod pairing;
+mod pairing_view;
 mod startup;
 mod theme;
 pub(crate) mod ui_helpers;
@@ -13,7 +13,7 @@ use crate::{channels::UiChannels, i18n::I18n, platform, server};
 
 use self::components::round_icon_button::round_icon_button;
 use self::main_content_view::MainContentView;
-use self::pairing::PairingView;
+use self::pairing_view::PairingView;
 use self::startup::StartupController;
 
 const CLASSIC_WINDOW_SIZE: [f32; 2] = [960.0, 640.0];

@@ -1,4 +1,4 @@
-use super::checklist_view::ChecklistAction;
+use super::super::checklist_view::ChecklistAction;
 use super::{ContentMode, MainContentView};
 use crate::i18n::I18n;
 use crate::models::{

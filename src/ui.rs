@@ -1,11 +1,8 @@
 mod components;
-#[path = "ui/views/main_content_view.rs"]
-mod main_content_view;
-#[path = "ui/views/pairing_view.rs"]
-mod pairing_view;
 mod startup;
 mod theme;
 pub(crate) mod ui_helpers;
+mod views;
 
 use eframe::egui;
 use egui::RichText;
@@ -14,9 +11,9 @@ use tokio::runtime::Runtime;
 use crate::{channels::UiChannels, i18n::I18n, platform, server};
 
 use self::components::round_icon_button::round_icon_button;
-use self::main_content_view::MainContentView;
-use self::pairing_view::PairingView;
 use self::startup::StartupController;
+use self::views::main_content_view::MainContentView;
+use self::views::pairing_view::PairingView;
 
 const CLASSIC_WINDOW_SIZE: [f32; 2] = [960.0, 640.0];
 const CLASSIC_MIN_WINDOW_SIZE: [f32; 2] = [640.0, 480.0];

@@ -8,8 +8,8 @@ use crate::{
     server,
 };
 
-use super::pairing_view::PairingView;
 use super::theme::Theme;
+use super::views::pairing_view::PairingView;
 use egui::RichText;
 
 pub struct StartupController {

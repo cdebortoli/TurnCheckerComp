@@ -2,8 +2,8 @@ use eframe::egui::{self, RichText};
 use qrcode::QrCode;
 
 use super::main_content_view::ContentAction;
-use super::theme::Theme;
-use super::TurnCheckerApp;
+use crate::ui::theme::Theme;
+use crate::ui::TurnCheckerApp;
 use crate::{i18n::I18n, server};
 
 pub struct PairingView {
@@ -14,7 +14,7 @@ pub struct PairingView {
 }
 
 impl TurnCheckerApp {
-    pub(super) fn handle_content_action(&mut self, action: ContentAction) {
+    pub(in crate::ui) fn handle_content_action(&mut self, action: ContentAction) {
         match action {
             ContentAction::NewTurnNotifRequested => self.newTurnNotif(),
             ContentAction::RestartRequested => self.restart_to_pairing(),
@@ -22,7 +22,7 @@ impl TurnCheckerApp {
     }
 
     #[allow(non_snake_case)]
-    pub(super) fn newTurnNotif(&mut self) {
+    pub(in crate::ui) fn newTurnNotif(&mut self) {
         let push_notification_client = self.push_notification_client.clone();
         match self
             .runtime
@@ -33,7 +33,7 @@ impl TurnCheckerApp {
         }
     }
 
-    pub(super) fn restart_to_pairing(&mut self) {
+    pub(in crate::ui) fn restart_to_pairing(&mut self) {
         match crate::database::reset_database() {
             Ok(()) => {
                 self.pairing.pairing_state().reset();

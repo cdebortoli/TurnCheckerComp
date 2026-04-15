@@ -1,25 +1,8 @@
-#[path = "checklist_view.rs"]
-mod checklist_view;
-#[path = "comments_view.rs"]
-mod comments_view;
-#[path = "main_content_view/main_content_view_actions.rs"]
-mod content_actions;
-#[path = "main_content_view/main_content_view_database.rs"]
-mod database_ops;
-#[path = "main_content_view/main_content_view_dialogs.rs"]
-mod dialogs;
-#[path = "new_check_draft.rs"]
-mod new_check_draft;
-#[path = "new_check_view.rs"]
-mod new_check_view;
-#[path = "main_content_view/main_content_view_next_turn.rs"]
-mod next_turn;
-#[path = "next_turn_waiting_view.rs"]
-mod next_turn_waiting_view;
-#[path = "source_checks_view.rs"]
-mod source_checks_view;
-#[path = "main_content_view/main_content_view_toolbar.rs"]
-mod toolbar;
+mod main_content_view_actions;
+mod main_content_view_database;
+mod main_content_view_dialogs;
+mod main_content_view_next_turn;
+mod main_content_view_toolbar;
 
 use crate::i18n::I18n;
 use crate::models::{check_source_type::CheckSourceType, Check, Comment, CurrentSession, Tag};
@@ -27,11 +10,11 @@ use crate::ui::theme::Theme;
 use eframe::egui;
 use tokio::sync::watch;
 
-use self::checklist_view::ChecklistView;
-use self::comments_view::CommentsView;
-use self::new_check_view::NewCheckView;
-use self::next_turn_waiting_view::NextTurnWaitingView;
-use self::source_checks_view::SourceChecksView;
+use super::checklist_view::ChecklistView;
+use super::comments_view::CommentsView;
+use super::new_check_view::NewCheckView;
+use super::next_turn_waiting_view::NextTurnWaitingView;
+use super::source_checks_view::SourceChecksView;
 
 pub struct MainContentView {
     i18n: I18n,
@@ -138,5 +121,4 @@ impl MainContentView {
 }
 
 #[cfg(test)]
-#[path = "main_content_view/main_content_view_tests.rs"]
-mod tests;
+mod main_content_view_tests;

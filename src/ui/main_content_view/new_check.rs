@@ -1,6 +1,6 @@
 use eframe::egui::{self, RichText};
 
-use super::helpers::{find_tag_by_uuid, tag_fill_color};
+use crate::ui::ui_helpers::{find_tag_by_uuid, tag_fill_color};
 use super::new_check_draft::NewCheckDraft;
 use crate::i18n::I18n;
 use crate::models::check_source_type::CheckSourceType;

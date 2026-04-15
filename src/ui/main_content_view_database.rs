@@ -1,4 +1,4 @@
-use super::helpers::{
+use crate::ui::ui_helpers::{
     apply_check_status_update, apply_comment_content_update, find_comment_by_type_mut,
 };
 use super::{ContentMode, MainContentView};

@@ -1,6 +1,6 @@
 use super::checklist::ChecklistAction;
-use super::helpers::{apply_check_status_update, apply_comment_content_update};
 use super::{ContentMode, MainContentView};
+use crate::ui::ui_helpers::{apply_check_status_update, apply_comment_content_update};
 use crate::i18n::I18n;
 use crate::models::{
     check_source_type::CheckSourceType, Check, Comment, CommentType, CurrentSession,

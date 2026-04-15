@@ -3,6 +3,7 @@ mod main_content_view;
 mod pairing;
 mod startup;
 mod theme;
+pub(crate) mod ui_helpers;
 
 use eframe::egui;
 use egui::RichText;

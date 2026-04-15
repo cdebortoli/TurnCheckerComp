@@ -6,8 +6,6 @@ mod content_actions;
 mod database_ops;
 #[path = "main_content_view_dialogs.rs"]
 mod dialogs;
-#[path = "main_content_view_helpers.rs"]
-pub(crate) mod helpers;
 mod new_check;
 mod new_check_draft;
 #[path = "main_content_view_next_turn.rs"]

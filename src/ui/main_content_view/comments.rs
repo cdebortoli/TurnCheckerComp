@@ -1,6 +1,8 @@
 use eframe::egui::{self, RichText};
 
-use super::helpers::{find_comment_by_type, find_comment_by_type_mut, show_sent_status_icon};
+use crate::ui::ui_helpers::{
+    find_comment_by_type, find_comment_by_type_mut, show_sent_status_icon,
+};
 use crate::i18n::I18n;
 use crate::models::{Comment, CommentType};
 use crate::ui::theme::Theme;

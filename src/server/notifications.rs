@@ -71,12 +71,13 @@ impl PushNotificationClient {
 
     pub async fn send_new_turn_notification(&self) -> anyhow::Result<()> {
         let i18n = I18n::system();
-        let push_notification_url = self.push_notification_url.as_deref().ok_or_else(|| {
-            anyhow::anyhow!(i18n.t("notification-url-not-configured"))
-        })?;
-        let device_token = self.device_token().ok_or_else(|| {
-            anyhow::anyhow!(i18n.t("notification-device-token-unavailable"))
-        })?;
+        let push_notification_url = self
+            .push_notification_url
+            .as_deref()
+            .ok_or_else(|| anyhow::anyhow!(i18n.t("notification-url-not-configured")))?;
+        let device_token = self
+            .device_token()
+            .ok_or_else(|| anyhow::anyhow!(i18n.t("notification-device-token-unavailable")))?;
 
         let mut data_map = Map::new();
         let new_turn_value = Value::String("new_turn".to_string());

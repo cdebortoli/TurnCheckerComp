@@ -1,11 +1,9 @@
 // Add a toggle to hide expired checks (compared to turn number)
 use eframe::egui::{self, RichText};
 
-use crate::ui::components::check_cards::{
-    CheckCardDisplayMode, CheckCardsAction, CheckCardsView,
-};
 use crate::i18n::{I18n, I18nValue};
 use crate::models::{Check, Tag};
+use crate::ui::components::check_cards::{CheckCardDisplayMode, CheckCardsAction, CheckCardsView};
 use crate::ui::theme::Theme;
 
 #[derive(Default)]

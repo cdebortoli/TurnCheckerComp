@@ -2,7 +2,11 @@ use eframe::egui;
 use tokio::runtime::Runtime;
 use tokio::sync::watch;
 
-use crate::{database, i18n::{I18n, I18nValue}, server};
+use crate::{
+    database,
+    i18n::{I18n, I18nValue},
+    server,
+};
 
 use super::pairing_view::PairingView;
 use super::theme::Theme;
@@ -88,7 +92,9 @@ impl StartupController {
                     }
                 }
                 StartupState::Failed(message) => {
-                    ui.label(RichText::new(self.i18n.t("startup-failed")).color(theme.text_primary));
+                    ui.label(
+                        RichText::new(self.i18n.t("startup-failed")).color(theme.text_primary),
+                    );
                     ui.monospace(RichText::new(message).color(theme.destructive));
                 }
             });

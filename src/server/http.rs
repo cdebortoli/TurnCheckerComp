@@ -108,9 +108,10 @@ impl HttpServer {
             .parse()
             .map_err(|error: std::net::AddrParseError| {
                 let i18n = I18n::system();
-                anyhow::anyhow!(
-                    i18n.tr("server-invalid-bind-address", &[("error", error.to_string().into())])
-                )
+                anyhow::anyhow!(i18n.tr(
+                    "server-invalid-bind-address",
+                    &[("error", error.to_string().into())]
+                ))
             })
     }
 

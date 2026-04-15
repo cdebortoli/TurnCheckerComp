@@ -1,11 +1,11 @@
 use eframe::egui::{self, RichText};
 
-use crate::ui::ui_helpers::{
-    find_comment_by_type, find_comment_by_type_mut, show_sent_status_icon,
-};
 use crate::i18n::I18n;
 use crate::models::{Comment, CommentType};
 use crate::ui::theme::Theme;
+use crate::ui::ui_helpers::{
+    find_comment_by_type, find_comment_by_type_mut, show_sent_status_icon,
+};
 
 pub(super) struct CommentsView {
     selected_comment_type: CommentType,
@@ -38,7 +38,9 @@ impl CommentsView {
             .fill(theme.bg_secondary)
             .corner_radius(theme.corner_radius)
             .inner_margin(theme.card_padding)
-            .show(ui, |ui| self.show_comments_content(ui, theme, i18n, comments))
+            .show(ui, |ui| {
+                self.show_comments_content(ui, theme, i18n, comments)
+            })
             .inner
     }
 

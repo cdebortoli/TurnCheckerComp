@@ -63,8 +63,7 @@ impl NextTurnWaitingView {
             .show(ui, |ui| {
                 ui.vertical_centered(|ui| {
                     ui.heading(
-                        RichText::new(i18n.t("waiting-next-turn-title"))
-                            .color(theme.text_primary),
+                        RichText::new(i18n.t("waiting-next-turn-title")).color(theme.text_primary),
                     );
                     ui.add_space(theme.spacing_md);
                     ui.spinner();

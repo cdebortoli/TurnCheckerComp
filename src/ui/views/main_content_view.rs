@@ -1,18 +1,24 @@
+#[path = "checklist_view.rs"]
 mod checklist_view;
+#[path = "comments_view.rs"]
 mod comments_view;
-#[path = "main_content_view_actions.rs"]
+#[path = "main_content_view/main_content_view_actions.rs"]
 mod content_actions;
-#[path = "main_content_view_database.rs"]
+#[path = "main_content_view/main_content_view_database.rs"]
 mod database_ops;
-#[path = "main_content_view_dialogs.rs"]
+#[path = "main_content_view/main_content_view_dialogs.rs"]
 mod dialogs;
-mod new_check_view;
+#[path = "new_check_draft.rs"]
 mod new_check_draft;
-#[path = "main_content_view_next_turn.rs"]
+#[path = "new_check_view.rs"]
+mod new_check_view;
+#[path = "main_content_view/main_content_view_next_turn.rs"]
 mod next_turn;
+#[path = "next_turn_waiting_view.rs"]
 mod next_turn_waiting_view;
+#[path = "source_checks_view.rs"]
 mod source_checks_view;
-#[path = "main_content_view_toolbar.rs"]
+#[path = "main_content_view/main_content_view_toolbar.rs"]
 mod toolbar;
 
 use crate::i18n::I18n;
@@ -132,5 +138,5 @@ impl MainContentView {
 }
 
 #[cfg(test)]
-#[path = "main_content_view_tests.rs"]
+#[path = "main_content_view/main_content_view_tests.rs"]
 mod tests;

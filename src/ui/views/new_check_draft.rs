@@ -72,7 +72,9 @@ impl NewCheckDraft {
             return;
         }
 
-        let turn_number = current_session.map(|session| session.turn_number).unwrap_or(1);
+        let turn_number = current_session
+            .map(|session| session.turn_number)
+            .unwrap_or(1);
         self.repeat_case = CheckRepeatType::Specific(turn_number);
         self.repeat_value = turn_number.to_string();
     }
@@ -93,8 +95,8 @@ impl NewCheckDraft {
 
         let repeat_field_name = i18n.t("field-repeat-value");
         let repeat_case = if self.turn_repeat_is_locked() {
-            let current_session = current_session
-                .ok_or_else(|| i18n.t("content-error-no-current-session"))?;
+            let current_session =
+                current_session.ok_or_else(|| i18n.t("content-error-no-current-session"))?;
             CheckRepeatType::Specific(current_session.turn_number)
         } else {
             match self.repeat_case {

@@ -1,5 +1,7 @@
 mod components;
+#[path = "ui/views/main_content_view.rs"]
 mod main_content_view;
+#[path = "ui/views/pairing_view.rs"]
 mod pairing_view;
 mod startup;
 mod theme;

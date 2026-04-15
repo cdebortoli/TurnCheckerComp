@@ -1,12 +1,12 @@
 use eframe::egui::{self, RichText};
 use egui::Color32;
 
-use crate::ui::ui_helpers::{find_tag_by_uuid, show_sent_status_icon, show_tag_capsule};
 use crate::i18n::{I18n, I18nValue};
 use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType, Tag};
 use crate::ui::components::toggle_button::toggle;
 use crate::ui::theme::Theme;
+use crate::ui::ui_helpers::{find_tag_by_uuid, show_sent_status_icon, show_tag_capsule};
 
 #[derive(Default)]
 pub(crate) struct CheckCardsView;

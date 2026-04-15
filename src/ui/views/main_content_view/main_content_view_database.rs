@@ -1,10 +1,10 @@
-use crate::ui::ui_helpers::{
-    apply_check_status_update, apply_comment_content_update, find_comment_by_type_mut,
-};
 use super::{ContentMode, MainContentView};
 use crate::database;
 use crate::models::{
     check_source_type::CheckSourceType, Check, Comment, CommentType, CurrentSession, Tag,
+};
+use crate::ui::ui_helpers::{
+    apply_check_status_update, apply_comment_content_update, find_comment_by_type_mut,
 };
 
 impl MainContentView {
@@ -95,7 +95,10 @@ impl MainContentView {
                 .ok_or_else(|| {
                     self.i18n.tr(
                         "content-missing-comment-slot",
-                        &[("comment_type", comment_type_label(&self.i18n, &comment_type).into())],
+                        &[(
+                            "comment_type",
+                            comment_type_label(&self.i18n, &comment_type).into(),
+                        )],
                     )
                 })?;
             let updated = apply_comment_content_update(comment.clone(), content);

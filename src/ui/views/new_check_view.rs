@@ -1,12 +1,12 @@
 use eframe::egui::{self, RichText};
 
-use crate::ui::ui_helpers::{find_tag_by_uuid, tag_fill_color};
 use super::new_check_draft::NewCheckDraft;
 use crate::i18n::I18n;
 use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType, CurrentSession, Tag};
 use crate::ui::components::toggle_button::toggle;
 use crate::ui::theme::Theme;
+use crate::ui::ui_helpers::{find_tag_by_uuid, tag_fill_color};
 
 #[derive(Default)]
 pub(super) struct NewCheckView {

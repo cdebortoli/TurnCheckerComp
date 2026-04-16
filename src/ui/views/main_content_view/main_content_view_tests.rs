@@ -1,4 +1,6 @@
 use super::super::checklist_view::ChecklistAction;
+use super::super::new_check_view::NewCheckAction;
+use super::super::source_checks_view::SourceChecksAction;
 use super::{ContentMode, MainContentView};
 use crate::i18n::I18n;
 use crate::models::{
@@ -169,5 +171,31 @@ fn selecting_check_from_editable_list_opens_edit_mode() {
     view.handle_checklist_action(ChecklistAction::CheckSelected(check));
 
     assert_eq!(view.mode, ContentMode::NewCheck);
+    assert!(view.error_message.is_none());
+}
+
+#[test]
+fn navigating_back_from_source_check_edit_returns_to_source_checks() {
+    let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
+    let mut view = MainContentView::new(content_refresh_rx, test_i18n());
+    let check = Check::new("Scout");
+
+    view.handle_source_checks_action(SourceChecksAction::CheckSelected(check));
+    view.navigate_back();
+
+    assert_eq!(view.mode, ContentMode::SourceChecks);
+    assert!(view.error_message.is_none());
+}
+
+#[test]
+fn cancelling_source_check_edit_returns_to_source_checks() {
+    let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
+    let mut view = MainContentView::new(content_refresh_rx, test_i18n());
+    let check = Check::new("Scout");
+
+    view.handle_source_checks_action(SourceChecksAction::CheckSelected(check));
+    view.handle_new_check_action(NewCheckAction::Cancelled);
+
+    assert_eq!(view.mode, ContentMode::SourceChecks);
     assert!(view.error_message.is_none());
 }

@@ -47,12 +47,7 @@ impl MainContentView {
                     .button(RichText::new(self.i18n.t("action-back")).color(theme.text_primary))
                     .clicked()
                 {
-                    // Seems not needed
-                    //if self.mode == ContentMode::NewCheck {
-                    // self.new_check_view.reset();
-                    //}
-                    self.mode = ContentMode::General;
-                    self.error_message = None;
+                    self.navigate_back();
                 }
             }
         });
@@ -88,6 +83,7 @@ impl MainContentView {
         if ui.add(button).clicked() {
             if target_mode == ContentMode::NewCheck {
                 self.new_check_view.prepare_new();
+                self.new_check_return_mode = ContentMode::General;
             }
             self.mode = target_mode;
             self.error_message = None;

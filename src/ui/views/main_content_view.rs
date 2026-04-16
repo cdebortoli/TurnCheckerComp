@@ -30,6 +30,7 @@ pub struct MainContentView {
     next_turn_waiting_view: NextTurnWaitingView,
     source_checks_view: SourceChecksView,
     source_checks_config: Option<SourceChecksConfig>,
+    new_check_return_mode: ContentMode,
     error_message: Option<String>,
     new_turn_confirmation_open: Option<usize>,
     restart_confirmation_unsent_checks: Option<usize>,
@@ -73,6 +74,7 @@ impl MainContentView {
             next_turn_waiting_view: NextTurnWaitingView::default(),
             source_checks_view: SourceChecksView::default(),
             source_checks_config: None,
+            new_check_return_mode: ContentMode::General,
             error_message: None,
             new_turn_confirmation_open: None,
             restart_confirmation_unsent_checks: None,
@@ -104,6 +106,7 @@ impl MainContentView {
         self.next_turn_waiting_view = NextTurnWaitingView::default();
         self.source_checks_view = SourceChecksView::default();
         self.source_checks_config = None;
+        self.new_check_return_mode = ContentMode::General;
         self.error_message = None;
         self.new_turn_confirmation_open = None;
         self.restart_confirmation_unsent_checks = None;

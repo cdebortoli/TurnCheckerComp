@@ -29,7 +29,7 @@ pub fn upsert(connection: &Connection, session: &CurrentSession) -> Result<i64> 
 
 pub fn fetch(connection: &Connection) -> Result<Option<CurrentSession>> {
     let mut statement = connection.prepare(
-        "SELECT id, game_uuid, game_name, turn_number, new_turn_number
+        "SELECT game_uuid, game_name, turn_number, new_turn_number
          FROM current_session
          WHERE id = ?1",
     )?;
@@ -86,14 +86,13 @@ pub fn validate_session_match(
 }
 
 fn row_to_current_session(row: &Row<'_>) -> rusqlite::Result<CurrentSession> {
-    let game_uuid: Option<String> = row.get(1)?;
+    let game_uuid: Option<String> = row.get(0)?;
 
     Ok(CurrentSession {
-        id: row.get(0)?,
         game_uuid: game_uuid.map(parse_uuid),
-        game_name: row.get(2)?,
-        turn_number: row.get(3)?,
-        new_turn_number: row.get(4)?,
+        game_name: row.get(1)?,
+        turn_number: row.get(2)?,
+        new_turn_number: row.get(3)?,
     })
 }
 

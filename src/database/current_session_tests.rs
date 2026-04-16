@@ -10,11 +10,9 @@ fn current_session_round_trip() -> Result<()> {
     let game_uuid = Uuid::new_v4();
     let mut session = CurrentSession::new(Some(game_uuid), "Civ VI", 12);
 
-    let id = super::upsert(&connection, &session)?;
-    session.id = id;
+    assert_eq!(super::upsert(&connection, &session)?, 1);
 
     let fetched = super::fetch(&connection)?.expect("current session exists");
-    assert_eq!(fetched.id, 1);
     assert_eq!(fetched.game_uuid, Some(game_uuid));
     assert_eq!(fetched.game_name, "Civ VI");
     assert_eq!(fetched.turn_number, 12);
@@ -26,7 +24,6 @@ fn current_session_round_trip() -> Result<()> {
     super::upsert(&connection, &session)?;
 
     let fetched = super::fetch(&connection)?.expect("current session exists");
-    assert_eq!(fetched.id, 1);
     assert_eq!(fetched.game_uuid, Some(game_uuid));
     assert_eq!(fetched.game_name, "Civ VII");
     assert_eq!(fetched.turn_number, 3);

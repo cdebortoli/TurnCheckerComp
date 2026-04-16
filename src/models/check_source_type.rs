@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum CheckSourceType {
     #[default]
     Game,
@@ -10,7 +10,7 @@ pub enum CheckSourceType {
 }
 
 impl CheckSourceType {
-    pub fn to_storage(&self) -> &'static str {
+    pub fn to_storage(self) -> &'static str {
         match self {
             Self::Game => "game",
             Self::GlobalGame => "globalGame",

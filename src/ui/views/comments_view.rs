@@ -83,7 +83,7 @@ impl CommentsView {
             );
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let is_sent = find_comment_by_type(comments, self.selected_comment_type.clone())
+                let is_sent = find_comment_by_type(comments, self.selected_comment_type)
                     .map(|comment| comment.is_sent)
                     .unwrap_or(true);
                 show_sent_status_icon(ui, theme, is_sent);
@@ -118,8 +118,7 @@ impl CommentsView {
         i18n: &I18n,
         comments: &mut [Comment],
     ) -> Option<CommentsAction> {
-        let Some(selected_comment) =
-            find_comment_by_type_mut(comments, self.selected_comment_type.clone())
+        let Some(selected_comment) = find_comment_by_type_mut(comments, self.selected_comment_type)
         else {
             ui.label(RichText::new(i18n.t("comments-no-slot")).color(theme.text_muted));
             return None;
@@ -134,7 +133,7 @@ impl CommentsView {
 
         if response.changed() {
             Some(CommentsAction::CommentChanged {
-                comment_type: self.selected_comment_type.clone(),
+                comment_type: self.selected_comment_type,
                 content: selected_comment.content.clone(),
             })
         } else {

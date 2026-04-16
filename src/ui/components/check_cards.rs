@@ -36,7 +36,7 @@ impl CheckCardsView {
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .show(ui, |ui| {
-                for check in checks.iter().cloned() {
+                for check in checks {
                     // While no previous action different to none, updated it.
                     // When a card_action is different of none, it means that the action will be managed, then after the redraw, it will reset to none
                     // So next new action will be able to be managed
@@ -58,7 +58,7 @@ impl CheckCardsView {
         theme: &Theme,
         i18n: &I18n,
         tags: &[Tag],
-        check: Check,
+        check: &Check,
         display_mode: CheckCardDisplayMode,
     ) -> Option<CheckCardsAction> {
         let mut selected_checked = check.is_checked;
@@ -74,7 +74,7 @@ impl CheckCardsView {
                         theme,
                         i18n,
                         tags,
-                        &check,
+                        check,
                         &mut selected_checked,
                         display_mode,
                     );
@@ -86,11 +86,11 @@ impl CheckCardsView {
         if display_mode == CheckCardDisplayMode::Toggleable && selected_checked != check.is_checked
         {
             Some(CheckCardsAction::CheckToggled {
-                check,
+                check: check.clone(),
                 is_checked: selected_checked,
             })
         } else if card_response.clicked() {
-            Some(CheckCardsAction::CheckSelected(check))
+            Some(CheckCardsAction::CheckSelected(check.clone()))
         } else {
             None
         }

@@ -27,7 +27,7 @@ impl MainContentView {
             ContentMode::SourceChecks => self
                 .source_checks_config
                 .as_ref()
-                .map(|config| config.source.clone()),
+                .map(|config| config.source),
             _ => None,
         };
 
@@ -90,8 +90,8 @@ impl MainContentView {
         content: String,
     ) -> Result<(), String> {
         let updated_comment = {
-            let comment = find_comment_by_type_mut(&mut self.comments, comment_type.clone())
-                .ok_or_else(|| {
+            let comment =
+                find_comment_by_type_mut(&mut self.comments, comment_type).ok_or_else(|| {
                     self.i18n.tr(
                         "content-missing-comment-slot",
                         &[(

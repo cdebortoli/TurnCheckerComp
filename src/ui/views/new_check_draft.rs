@@ -41,8 +41,8 @@ impl NewCheckDraft {
             name: check.name.clone(),
             detail: check.detail.clone().unwrap_or_default(),
             selected_tag_uuid: check.tag_uuid,
-            source: check.source.clone(),
-            repeat_case: check.repeat_case.clone(),
+            source: check.source,
+            repeat_case: check.repeat_case,
             repeat_value: repeat_value_for(&check.repeat_case),
             is_mandatory: check.is_mandatory,
             is_checked: check.is_checked,
@@ -126,7 +126,7 @@ impl NewCheckDraft {
         check.name = name.to_string();
         check.detail = trimmed_option(&self.detail);
         check.tag_uuid = self.selected_tag_uuid;
-        check.source = self.source.clone();
+        check.source = self.source;
         check.repeat_case = repeat_case;
         check.is_mandatory = self.is_mandatory;
         check.is_checked = self.is_checked;

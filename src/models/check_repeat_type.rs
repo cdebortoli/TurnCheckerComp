@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum CheckRepeatType {
     #[default]
     Everytime,
@@ -10,12 +10,12 @@ pub enum CheckRepeatType {
 }
 
 impl CheckRepeatType {
-    pub fn to_storage(&self) -> (&'static str, Option<i32>) {
+    pub fn to_storage(self) -> (&'static str, Option<i32>) {
         match self {
             Self::Everytime => ("everytime", None),
-            Self::Conditional(value) => ("conditional", Some(*value)),
-            Self::Specific(value) => ("specific", Some(*value)),
-            Self::Until(value) => ("until", Some(*value)),
+            Self::Conditional(value) => ("conditional", Some(value)),
+            Self::Specific(value) => ("specific", Some(value)),
+            Self::Until(value) => ("until", Some(value)),
         }
     }
 

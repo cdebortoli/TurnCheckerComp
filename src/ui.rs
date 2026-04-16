@@ -47,7 +47,9 @@ impl TurnCheckerApp {
         channels: UiChannels,
         i18n: I18n,
     ) -> Self {
-        let mut repaint_refresh_rx = channels.content_refresh_rx.clone();
+        let content_refresh_tx = channels.content_refresh_tx.clone();
+        let content_refresh_rx = channels.content_refresh_rx.clone();
+        let mut repaint_refresh_rx = content_refresh_rx.clone();
         let push_notification_client = server::PushNotificationClient::new();
         runtime.spawn(async move {
             while repaint_refresh_rx.changed().await.is_ok() {
@@ -56,19 +58,22 @@ impl TurnCheckerApp {
         });
 
         let pairing_state = server::PairingState::new();
+        let startup_i18n = i18n.clone();
+        let pairing_i18n = i18n.clone();
+        let content_i18n = i18n.clone();
 
         Self {
             runtime,
-            _channels: channels.clone(),
-            i18n: i18n.clone(),
+            _channels: channels,
+            i18n,
             pairing_state,
             startup: StartupController::new(
-                channels.content_refresh_tx.clone(),
+                content_refresh_tx,
                 push_notification_client.clone(),
-                i18n.clone(),
+                startup_i18n,
             ),
-            pairing: PairingView::new(i18n.clone()),
-            content: MainContentView::new(channels.content_refresh_rx.clone(), i18n),
+            pairing: PairingView::new(pairing_i18n),
+            content: MainContentView::new(content_refresh_rx, content_i18n),
             push_notification_client,
             minimal_mode: false,
             always_on_top: false,

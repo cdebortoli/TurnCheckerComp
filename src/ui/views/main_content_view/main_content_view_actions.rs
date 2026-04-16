@@ -20,7 +20,7 @@ impl MainContentView {
         self.mode = return_mode;
         self.error_message = None;
 
-        if reload_return_mode && self.mode == ContentMode::SourceChecks {
+        if reload_return_mode {
             self.needs_reload = true;
             self.reload_checks_if_needed();
         }

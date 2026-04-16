@@ -121,7 +121,6 @@ impl MainContentView {
         let connection = database::establish_connection().map_err(|err| err.to_string())?;
         database::checks::insert(&connection, &check).map_err(|err| err.to_string())?;
         self.needs_reload = true;
-        self.reload_checks_if_needed();
         Ok(())
     }
 
@@ -129,7 +128,6 @@ impl MainContentView {
         let connection = database::establish_connection().map_err(|err| err.to_string())?;
         database::checks::update(&connection, &check).map_err(|err| err.to_string())?;
         self.needs_reload = true;
-        self.reload_checks_if_needed();
         Ok(())
     }
 

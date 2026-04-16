@@ -108,3 +108,4 @@ repeat-badge-until = Until Turn { $turn }
 validation-name-required = Name is required.
 validation-field-valid-integer = { $field } must be a valid integer.
 validation-field-at-least = { $field } must be at least { $min }.
+validation-field-at-most = { $field } must be at most { $max }.

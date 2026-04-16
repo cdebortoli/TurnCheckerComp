@@ -38,6 +38,21 @@ fn draft_requires_positive_repeat_value() {
 }
 
 #[test]
+fn draft_requires_repeat_value_at_most_9999() {
+    let draft = NewCheckDraft {
+        name: "Scout".to_string(),
+        repeat_case: CheckRepeatType::Until(1),
+        repeat_value: "10000".to_string(),
+        ..Default::default()
+    };
+
+    let error = draft
+        .to_check(&test_i18n(), None)
+        .expect_err("repeat value should fail");
+    assert!(error.contains("9999"));
+}
+
+#[test]
 fn draft_builds_non_default_repeat_type() {
     let tag_uuid = Uuid::new_v4();
     let draft = NewCheckDraft {

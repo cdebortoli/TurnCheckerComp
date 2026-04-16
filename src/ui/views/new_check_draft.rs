@@ -3,6 +3,8 @@ use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType, CurrentSession};
 use uuid::Uuid;
 
+pub(super) const MAX_REPEAT_VALUE: i32 = 9_999;
+
 #[derive(Clone)]
 pub(super) struct NewCheckDraft {
     existing_check: Option<Check>,
@@ -156,6 +158,16 @@ fn parse_positive_i32(value: &str, field_name: &str, i18n: &I18n) -> Result<i32,
             &[
                 ("field", I18nValue::from(field_name)),
                 ("min", I18nValue::from(1_i32)),
+            ],
+        ));
+    }
+
+    if parsed > MAX_REPEAT_VALUE {
+        return Err(i18n.tr(
+            "validation-field-at-most",
+            &[
+                ("field", I18nValue::from(field_name)),
+                ("max", I18nValue::from(MAX_REPEAT_VALUE)),
             ],
         ));
     }

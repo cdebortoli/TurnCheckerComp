@@ -1,6 +1,6 @@
 use eframe::egui::{self, RichText};
 
-use super::new_check_draft::NewCheckDraft;
+use super::new_check_draft::{NewCheckDraft, MAX_REPEAT_VALUE};
 use crate::i18n::I18n;
 use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType, CurrentSession, Tag};
@@ -193,13 +193,13 @@ impl NewCheckView {
             let repeat_locked = self.draft.turn_repeat_is_locked();
             ui.horizontal(|ui| {
                 ui.add_enabled_ui(!repeat_locked, |ui| {
-                    labeled_text_edit(
+                    labeled_numeric_text_edit(
                         ui,
                         theme,
                         &i18n.t("field-repeat-value"),
                         &mut self.draft.repeat_value,
-                        false,
                         Some(40.0),
+                        MAX_REPEAT_VALUE,
                     );
                 });
             });
@@ -285,6 +285,38 @@ fn labeled_text_edit(
         );
     }
     ui.add_space(theme.spacing_md);
+}
+
+fn labeled_numeric_text_edit(
+    ui: &mut egui::Ui,
+    theme: &Theme,
+    label: &str,
+    value: &mut String,
+    width: Option<f32>,
+    max_value: i32,
+) {
+    ui.label(RichText::new(label).color(theme.text_secondary));
+    ui.add(
+        egui::TextEdit::singleline(value)
+            .background_color(theme.bg_list_element)
+            .desired_width(width.unwrap_or(f32::INFINITY)),
+    );
+    sanitize_numeric_input(value, max_value);
+    ui.add_space(theme.spacing_md);
+}
+
+fn sanitize_numeric_input(value: &mut String, max_value: i32) {
+    value.retain(|ch| ch.is_ascii_digit());
+
+    if value.is_empty() {
+        return;
+    }
+
+    match value.parse::<i32>() {
+        Ok(parsed) if parsed > max_value => *value = max_value.to_string(),
+        Ok(_) => {}
+        Err(_) => *value = max_value.to_string(),
+    }
 }
 
 fn source_label(i18n: &I18n, source: &CheckSourceType) -> String {

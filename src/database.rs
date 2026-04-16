@@ -9,4 +9,3 @@ pub use connection::{
     database_path, establish_connection, establish_connection_at, inspect_startup_state,
     inspect_startup_state_at, reset_database, reset_database_at, DatabaseStartupState,
 };
-

@@ -51,7 +51,7 @@ impl StartupController {
         }
     }
 
-    pub fn ensure_started(&mut self, runtime: &mut Runtime, pairing_state: server::PairingState) {
+    pub fn ensure_started(&mut self, runtime: &mut Runtime, pairing_state: &server::PairingState) {
         if matches!(self.state, StartupState::Ready) && !self.server_started {
             self.continue_startup(runtime, pairing_state);
         }
@@ -100,7 +100,7 @@ impl StartupController {
         &mut self,
         ui: &mut egui::Ui,
         runtime: &mut Runtime,
-        pairing_state: server::PairingState,
+        pairing_state: &server::PairingState,
         theme: &Theme,
     ) {
         let unsent_records = match &self.state {
@@ -134,25 +134,25 @@ impl StartupController {
 
                     ui.horizontal(|ui| {
                         if ui.button(self.i18n.t("startup-keep-db-button")).clicked() {
-                            self.continue_startup(runtime, pairing_state.clone());
+                            self.continue_startup(runtime, pairing_state);
                         }
 
                         if ui.button(self.i18n.t("startup-reset-db-button")).clicked() {
-                            self.reset_database_and_continue(runtime, pairing_state.clone());
+                            self.reset_database_and_continue(runtime, pairing_state);
                         }
                     });
                 });
         }
     }
 
-    fn continue_startup(&mut self, runtime: &mut Runtime, pairing_state: server::PairingState) {
+    fn continue_startup(&mut self, runtime: &mut Runtime, pairing_state: &server::PairingState) {
         if self.server_started {
             self.state = StartupState::Ready;
             return;
         }
 
         match runtime.block_on(server::spawn(
-            pairing_state,
+            pairing_state.clone(),
             self.content_refresh_tx.clone(),
             self.push_notification_client.clone(),
         )) {
@@ -168,7 +168,7 @@ impl StartupController {
     fn reset_database_and_continue(
         &mut self,
         runtime: &mut Runtime,
-        pairing_state: server::PairingState,
+        pairing_state: &server::PairingState,
     ) {
         match database::reset_database() {
             Ok(()) => self.continue_startup(runtime, pairing_state),

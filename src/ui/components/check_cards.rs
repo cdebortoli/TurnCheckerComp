@@ -63,26 +63,23 @@ impl CheckCardsView {
     ) -> Option<CheckCardsAction> {
         let mut selected_checked = check.is_checked;
 
-        let card = ui.scope_builder(
-            egui::UiBuilder::new().sense(egui::Sense::click()),
-            |ui| {
-                egui::Frame::new()
-                    .fill(theme.bg_list_element)
-                    .corner_radius(theme.corner_radius)
-                    .inner_margin(theme.card_padding)
-                    .show(ui, |ui| {
-                        self.show_check_card_header(
-                            ui,
-                            theme,
-                            i18n,
-                            tags,
-                            &check,
-                            &mut selected_checked,
-                            display_mode,
-                        );
-                    });
-            },
-        );
+        let card = ui.scope_builder(egui::UiBuilder::new().sense(egui::Sense::click()), |ui| {
+            egui::Frame::new()
+                .fill(theme.bg_list_element)
+                .corner_radius(theme.corner_radius)
+                .inner_margin(theme.card_padding)
+                .show(ui, |ui| {
+                    self.show_check_card_header(
+                        ui,
+                        theme,
+                        i18n,
+                        tags,
+                        &check,
+                        &mut selected_checked,
+                        display_mode,
+                    );
+                });
+        });
 
         let card_response = card.response;
 

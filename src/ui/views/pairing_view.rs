@@ -6,7 +6,6 @@ use crate::{i18n::I18n, server};
 
 pub struct PairingView {
     i18n: I18n,
-    pairing_state: server::PairingState,
     server_connection: Option<server::ServerConnectionInfo>,
     qr_texture: Option<egui::TextureHandle>,
 }
@@ -15,23 +14,14 @@ impl PairingView {
     pub fn new(i18n: I18n) -> Self {
         Self {
             i18n,
-            pairing_state: server::PairingState::new(),
             server_connection: None,
             qr_texture: None,
         }
     }
 
-    pub fn pairing_state(&self) -> server::PairingState {
-        self.pairing_state.clone()
-    }
-
     pub fn set_server_connection(&mut self, server_connection: server::ServerConnectionInfo) {
         self.server_connection = Some(server_connection);
         self.qr_texture = None;
-    }
-
-    pub fn is_paired(&self) -> bool {
-        self.pairing_state.is_paired()
     }
 
     pub fn show_waiting(&mut self, ui: &mut egui::Ui) {

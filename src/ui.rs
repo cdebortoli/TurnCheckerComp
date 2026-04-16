@@ -28,6 +28,7 @@ pub struct TurnCheckerApp {
     runtime: Runtime,
     _channels: UiChannels,
     i18n: I18n,
+    pairing_state: server::PairingState,
     startup: StartupController,
     pairing: PairingView,
     content: MainContentView,
@@ -54,10 +55,13 @@ impl TurnCheckerApp {
             }
         });
 
+        let pairing_state = server::PairingState::new();
+
         Self {
             runtime,
             _channels: channels.clone(),
             i18n: i18n.clone(),
+            pairing_state,
             startup: StartupController::new(
                 channels.content_refresh_tx.clone(),
                 push_notification_client.clone(),
@@ -279,7 +283,7 @@ impl eframe::App for TurnCheckerApp {
 
         // Check if ready and so that the server must be running
         self.startup
-            .ensure_started(&mut self.runtime, self.pairing.pairing_state());
+            .ensure_started(&mut self.runtime, &self.pairing_state);
         // If server started but server_connection data not processed, configuring pairing system/view
         self.startup.sync_pairing_connection(&mut self.pairing);
 
@@ -299,7 +303,7 @@ impl eframe::App for TurnCheckerApp {
 
                     if !self.startup.is_ready() {
                         self.startup.show_status(ui, &theme);
-                    } else if self.pairing.is_paired() {
+                    } else if self.pairing_state.is_paired() {
                         if let Some(action) = self.content.show(ui) {
                             self.handle_content_action(action);
                         }
@@ -315,7 +319,7 @@ impl eframe::App for TurnCheckerApp {
                     self.startup.show_restore_modal(
                         ui,
                         &mut self.runtime,
-                        self.pairing.pairing_state(),
+                        &self.pairing_state,
                         &theme,
                     );
                 }
@@ -345,7 +349,7 @@ impl TurnCheckerApp {
     fn restart_to_pairing(&mut self) {
         match crate::database::reset_database() {
             Ok(()) => {
-                self.pairing.pairing_state().reset();
+                self.pairing_state.reset();
                 self.content.prepare_for_restart();
                 let next_version = (*self._channels.content_refresh_tx.borrow()).wrapping_add(1);
                 let _ = self._channels.content_refresh_tx.send(next_version);

@@ -22,7 +22,6 @@ impl MainContentView {
 
         if reload_return_mode {
             self.needs_reload = true;
-            self.reload_checks_if_needed();
         }
     }
 

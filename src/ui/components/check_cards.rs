@@ -156,7 +156,7 @@ impl CheckCardsView {
                 show_repeat_badge(ui, theme, i18n, &check.repeat_case);
 
                 if let Some(tag) = find_tag_by_uuid(tags, check.tag_uuid) {
-                    show_tag_capsule(ui, tag);
+                    show_tag_capsule(ui, theme, tag);
                 }
             });
 

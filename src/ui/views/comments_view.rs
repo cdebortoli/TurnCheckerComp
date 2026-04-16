@@ -35,7 +35,7 @@ impl CommentsView {
         comments: &mut Vec<Comment>,
     ) -> Option<CommentsAction> {
         egui::Frame::new()
-            .fill(theme.bg_secondary)
+            .fill(theme.bg_list)
             .corner_radius(theme.corner_radius)
             .inner_margin(theme.card_padding)
             .show(ui, |ui| {
@@ -52,6 +52,7 @@ impl CommentsView {
         comments: &mut Vec<Comment>,
     ) -> Option<CommentsAction> {
         ui.heading(RichText::new(i18n.t("comments-title")).color(theme.text_primary));
+        ui.add_space(theme.spacing_xs);
         ui.add_space(theme.spacing_md);
 
         self.show_comment_toolbar(ui, theme, i18n, comments);

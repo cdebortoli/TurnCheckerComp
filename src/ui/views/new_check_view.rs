@@ -146,7 +146,7 @@ impl NewCheckView {
 
                 for tag in tags {
                     let is_selected = self.draft.selected_tag_uuid == Some(tag.uuid);
-                    if show_tag_option(ui, tag, is_selected).clicked() {
+                    if show_tag_option(ui, theme, tag, is_selected).clicked() {
                         self.draft.selected_tag_uuid = Some(tag.uuid);
                         ui.close();
                     }
@@ -309,8 +309,13 @@ fn repeat_requires_value(repeat_case: &CheckRepeatType) -> bool {
     !matches!(repeat_case, CheckRepeatType::Everytime)
 }
 
-fn show_tag_option(ui: &mut egui::Ui, tag: &Tag, is_selected: bool) -> egui::Response {
-    show_colored_option(ui, &tag.name, tag_fill_color(tag), is_selected)
+fn show_tag_option(
+    ui: &mut egui::Ui,
+    theme: &Theme,
+    tag: &Tag,
+    is_selected: bool,
+) -> egui::Response {
+    show_colored_option(ui, &tag.name, tag_fill_color(tag, theme), is_selected)
 }
 
 fn show_colored_option(

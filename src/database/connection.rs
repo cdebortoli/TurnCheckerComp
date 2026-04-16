@@ -1,4 +1,3 @@
-// TODO : When restoring at startup, maybe not push again from ios ?
 use std::fs;
 use std::path::PathBuf;
 
@@ -41,6 +40,7 @@ pub fn establish_connection_at(path: &PathBuf) -> Result<Connection> {
     Ok(connection)
 }
 
+#[cfg(test)]
 pub fn establish_in_memory_connection() -> Result<Connection> {
     let connection = Connection::open_in_memory()?;
     configure_connection(&connection)?;

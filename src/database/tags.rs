@@ -68,21 +68,6 @@ pub fn upsert(connection: &Connection, tag: &Tag) -> Result<i64> {
     }
 }
 
-pub fn update(connection: &Connection, tag: &Tag) -> Result<()> {
-    connection.execute(
-        "UPDATE tags SET name = ?1, color = ?2, text_color = ?3, is_sent = ?4 WHERE id = ?5",
-        params![
-            tag.name,
-            tag.color,
-            tag.text_color,
-            bool_to_sqlite(tag.is_sent),
-            tag.id
-        ],
-    )?;
-
-    Ok(())
-}
-
 pub fn delete(connection: &Connection, id: i64) -> Result<()> {
     connection.execute("DELETE FROM tags WHERE id = ?1", [id])?;
     Ok(())

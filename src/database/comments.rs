@@ -66,20 +66,6 @@ pub fn upsert(connection: &Connection, comment: &Comment) -> Result<i64> {
     }
 }
 
-pub fn update(connection: &Connection, comment: &Comment) -> Result<()> {
-    connection.execute(
-        "UPDATE comments SET uuid = ?1, comment_type = ?2, content = ?3, is_sent = ?4 WHERE id = ?5",
-        params![
-            comment.uuid.to_string(),
-            comment.comment_type.as_str(),
-            comment.content,
-            bool_to_sqlite(comment.is_sent),
-            comment.id
-        ],
-    )?;
-    Ok(())
-}
-
 pub fn delete(connection: &Connection, id: i64) -> Result<()> {
     connection.execute("DELETE FROM comments WHERE id = ?1", [id])?;
     Ok(())

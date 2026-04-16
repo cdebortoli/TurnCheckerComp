@@ -15,7 +15,7 @@ fn tag_crud_round_trip() -> Result<()> {
     assert_eq!(fetched.name, "Attack");
 
     tag.name = "Defense".to_string();
-    super::update(&connection, &tag)?;
+    assert_eq!(super::upsert(&connection, &tag)?, id);
 
     let tags = super::fetch_all(&connection)?;
     assert_eq!(tags.len(), 1);

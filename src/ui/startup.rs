@@ -109,6 +109,9 @@ impl StartupController {
         };
 
         if let Some(unsent_records) = unsent_records {
+            ui.painter()
+                .rect_filled(ui.max_rect(), 0.0, theme.bg_modal_overlay);
+
             let ctx = ui.ctx().clone();
             egui::Window::new(self.i18n.t("startup-unsent-data-title"))
                 .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
@@ -126,7 +129,8 @@ impl StartupController {
                         RichText::new(self.i18n.t("startup-keep-db-question"))
                             .color(theme.text_muted),
                     );
-                    ui.add_space(theme.spacing_md);
+                    ui.add_space(theme.spacing_xs);
+                    ui.add_space(theme.spacing_xl);
 
                     ui.horizontal(|ui| {
                         if ui.button(self.i18n.t("startup-keep-db-button")).clicked() {

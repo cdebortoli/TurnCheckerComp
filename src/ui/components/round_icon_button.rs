@@ -22,6 +22,8 @@ fn show_round_icon_button(
             1.0,
             if active {
                 theme.accent
+            } else if response.hovered() {
+                theme.accent_hover
             } else {
                 theme.text_muted
             },
@@ -32,6 +34,8 @@ fn show_round_icon_button(
         ui.painter().circle(center, button_radius, fill, stroke);
         let icon_color = if active {
             theme.accent
+        } else if response.hovered() {
+            theme.accent_hover
         } else {
             theme.text_primary
         };

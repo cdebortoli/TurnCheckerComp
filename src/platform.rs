@@ -2,12 +2,9 @@
 mod windows {
     use serde::Deserialize;
     use std::{
-        env,
-        fs::{self, OpenOptions},
-        io::Write,
+        env, fs,
         path::{Path, PathBuf},
         sync::OnceLock,
-        time::{SystemTime, UNIX_EPOCH},
     };
 
     const GRAPHICS_CONFIG_FILE: &str = "graphics.toml";
@@ -19,8 +16,6 @@ mod windows {
 
     #[derive(Debug, Clone)]
     struct GraphicsConfig {
-        config_path: PathBuf,
-        parameters_path: PathBuf,
         renderer: eframe::Renderer,
         transparency: bool,
         glow_hardware_acceleration: eframe::HardwareAcceleration,
@@ -36,13 +31,6 @@ mod windows {
         glow_hardware_acceleration: Option<String>,
         wgpu_present_mode: Option<String>,
         wgpu_power_preference: Option<String>,
-    }
-
-    #[derive(Debug)]
-    struct CompanionPaths {
-        executable_dir: PathBuf,
-        config_path: PathBuf,
-        parameters_path: PathBuf,
     }
 
     pub fn configure_native_options(options: &mut eframe::NativeOptions) {
@@ -75,9 +63,9 @@ mod windows {
 
     impl GraphicsConfig {
         fn load() -> Self {
-            let paths = ensure_companion_files();
+            let config_path = ensure_companion_files();
 
-            let file = match fs::read_to_string(&paths.config_path) {
+            let file = match fs::read_to_string(&config_path) {
                 Ok(contents) => toml::from_str::<GraphicsConfigFile>(&contents)
                     .unwrap_or_else(|error| GraphicsConfigFile::default()),
                 Err(error) => GraphicsConfigFile::default(),
@@ -92,8 +80,6 @@ mod windows {
                 parse_wgpu_power_preference(file.wgpu_power_preference.as_deref());
 
             Self {
-                config_path: paths.config_path,
-                parameters_path: paths.parameters_path,
                 renderer,
                 transparency,
                 glow_hardware_acceleration,
@@ -103,7 +89,7 @@ mod windows {
         }
     }
 
-    fn ensure_companion_files() -> CompanionPaths {
+    fn ensure_companion_files() -> PathBuf {
         let executable_dir = executable_dir();
         let config_path = executable_dir.join(GRAPHICS_CONFIG_FILE);
         let parameters_path = executable_dir.join(PARAMETERS_FILE);
@@ -111,11 +97,7 @@ mod windows {
         write_if_missing(&config_path, DEFAULT_GRAPHICS_CONFIG);
         write_if_missing(&parameters_path, DEFAULT_PARAMETERS);
 
-        CompanionPaths {
-            executable_dir,
-            config_path,
-            parameters_path,
-        }
+        config_path
     }
 
     fn executable_dir() -> PathBuf {
@@ -136,15 +118,6 @@ mod windows {
         }
 
         let _ = fs::write(path, content);
-    }
-
-    fn resolve_path(base_dir: &Path, raw_path: &str) -> PathBuf {
-        let path = PathBuf::from(raw_path.trim());
-        if path.is_relative() {
-            base_dir.join(path)
-        } else {
-            path
-        }
     }
 
     fn parse_renderer(raw: Option<&str>) -> eframe::Renderer {
@@ -198,22 +171,6 @@ mod windows {
     fn normalize(raw: Option<&str>) -> Option<String> {
         raw.map(|value| value.trim().to_ascii_lowercase().replace('-', "_"))
             .filter(|value| !value.is_empty())
-    }
-
-    fn power_preference_label(preference: eframe::wgpu::PowerPreference) -> &'static str {
-        match preference {
-            eframe::wgpu::PowerPreference::LowPower => "LowPower",
-            eframe::wgpu::PowerPreference::HighPerformance => "HighPerformance",
-            eframe::wgpu::PowerPreference::None => "None",
-        }
-    }
-
-    fn hardware_acceleration_label(mode: eframe::HardwareAcceleration) -> &'static str {
-        match mode {
-            eframe::HardwareAcceleration::Required => "Required",
-            eframe::HardwareAcceleration::Preferred => "Preferred",
-            eframe::HardwareAcceleration::Off => "Off",
-        }
     }
 }
 

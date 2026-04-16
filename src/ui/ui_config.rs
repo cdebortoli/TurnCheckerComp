@@ -1,22 +1,26 @@
-use super::{theme::Theme, TurnCheckerApp, CLASSIC_MIN_WINDOW_SIZE, CLASSIC_WINDOW_SIZE, MINIMAL_WINDOW_SIZE};
+use super::{
+    theme::Theme, TurnCheckerApp, CLASSIC_MIN_WINDOW_SIZE, CLASSIC_WINDOW_SIZE, MINIMAL_WINDOW_SIZE,
+};
 use crate::platform;
 use eframe::egui;
 
 impl TurnCheckerApp {
     pub fn configure_fonts(ctx: &egui::Context) {
         let mut fonts = egui::FontDefinitions::default();
-        let regular =
-            egui::FontData::from_static(include_bytes!("../../assets/fonts/Montserrat-Variable.ttf"))
-                .tweak(egui::FontTweak {
-                    coords: egui::epaint::text::VariationCoords::new([("wght", 400.0)]),
-                    ..Default::default()
-                });
-        let bold =
-            egui::FontData::from_static(include_bytes!("../../assets/fonts/Montserrat-Variable.ttf"))
-                .tweak(egui::FontTweak {
-                    coords: egui::epaint::text::VariationCoords::new([("wght", 700.0)]),
-                    ..Default::default()
-                });
+        let regular = egui::FontData::from_static(include_bytes!(
+            "../../assets/fonts/Montserrat-Variable.ttf"
+        ))
+        .tweak(egui::FontTweak {
+            coords: egui::epaint::text::VariationCoords::new([("wght", 400.0)]),
+            ..Default::default()
+        });
+        let bold = egui::FontData::from_static(include_bytes!(
+            "../../assets/fonts/Montserrat-Variable.ttf"
+        ))
+        .tweak(egui::FontTweak {
+            coords: egui::epaint::text::VariationCoords::new([("wght", 700.0)]),
+            ..Default::default()
+        });
 
         fonts
             .font_data
@@ -55,8 +59,10 @@ impl TurnCheckerApp {
     }
 
     fn app_icon() -> egui::IconData {
-        eframe::icon_data::from_png_bytes(include_bytes!("../../assets/icons/app_icon_ios_dark.png"))
-            .expect("embedded app icon should decode")
+        eframe::icon_data::from_png_bytes(include_bytes!(
+            "../../assets/icons/app_icon_ios_dark.png"
+        ))
+        .expect("embedded app icon should decode")
     }
 
     pub(super) fn classic_window_size() -> egui::Vec2 {

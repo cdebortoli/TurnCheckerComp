@@ -53,8 +53,8 @@ fn parse_hex_color(value: &str) -> Option<egui::Color32> {
     Some(egui::Color32::from_rgb(red, green, blue))
 }
 
-pub(super) fn tag_fill_color(tag: &Tag) -> egui::Color32 {
-    parse_hex_color(&tag.color).unwrap_or_else(|| egui::Color32::from_rgb(99, 99, 102))
+pub(super) fn tag_fill_color(tag: &Tag, theme: &Theme) -> egui::Color32 {
+    parse_hex_color(&tag.color).unwrap_or(theme.badge_default)
 }
 
 fn tag_text_color(tag: &Tag) -> egui::Color32 {
@@ -63,9 +63,9 @@ fn tag_text_color(tag: &Tag) -> egui::Color32 {
 
 pub(crate) fn show_sent_status_icon(ui: &mut egui::Ui, theme: &Theme, is_sent: bool) {
     let circle_color = if is_sent {
-        eframe::egui::Color32::from_rgba_premultiplied(48, 209, 88, 220)
+        theme.success.gamma_multiply(0.86)
     } else {
-        eframe::egui::Color32::from_rgba_premultiplied(255, 69, 58, 220)
+        theme.destructive.gamma_multiply(0.86)
     };
     let icon_color = theme.text_primary;
     let size = 20.0;
@@ -109,9 +109,9 @@ pub(crate) fn show_sent_status_icon(ui: &mut egui::Ui, theme: &Theme, is_sent: b
     }
 }
 
-pub(crate) fn show_tag_capsule(ui: &mut egui::Ui, tag: &Tag) {
+pub(crate) fn show_tag_capsule(ui: &mut egui::Ui, theme: &Theme, tag: &Tag) {
     egui::Frame::new()
-        .fill(tag_fill_color(tag))
+        .fill(tag_fill_color(tag, theme))
         .corner_radius(999.0)
         .inner_margin(egui::Margin::symmetric(10, 4))
         .show(ui, |ui| {

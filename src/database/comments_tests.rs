@@ -18,7 +18,7 @@ fn comment_crud_round_trip() -> Result<()> {
     comment.comment_type = CommentType::Game;
     comment.content = "Whole match note".to_string();
     comment.is_sent = true;
-    super::update(&connection, &comment)?;
+    assert_eq!(super::upsert(&connection, &comment)?, id);
 
     let comments = super::fetch_all(&connection)?;
     assert_eq!(comments.len(), 1);

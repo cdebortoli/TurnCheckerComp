@@ -15,7 +15,7 @@ use egui::RichText;
 pub struct StartupController {
     i18n: I18n,
     state: StartupState,
-    server_started: bool,
+    pub server_started: bool,
     server_connection: Option<server::ServerConnectionInfo>,
     content_refresh_tx: watch::Sender<u64>,
     push_notification_client: server::PushNotificationClient,
@@ -59,10 +59,6 @@ impl StartupController {
 
     pub fn is_ready(&self) -> bool {
         matches!(self.state, StartupState::Ready)
-    }
-
-    pub fn server_started(&self) -> bool {
-        self.server_started
     }
 
     pub fn sync_pairing_connection(&mut self, pairing: &mut PairingView) {

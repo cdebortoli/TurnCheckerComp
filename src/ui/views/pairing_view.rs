@@ -2,7 +2,6 @@ use eframe::egui::{self, RichText};
 use qrcode::QrCode;
 
 use crate::ui::theme::Theme;
-use crate::ui::TurnCheckerApp;
 use crate::{i18n::I18n, server};
 
 pub struct PairingView {

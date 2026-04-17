@@ -1,3 +1,4 @@
+mod check_presentation;
 mod components;
 mod startup;
 mod theme;

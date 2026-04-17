@@ -4,6 +4,9 @@ use super::new_check_draft::{NewCheckDraft, MAX_REPEAT_VALUE};
 use crate::i18n::I18n;
 use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType, CurrentSession, Tag};
+use crate::ui::check_presentation::{
+    repeat_color, repeat_editor_label, source_color, source_label,
+};
 use crate::ui::components::toggle_button::toggle;
 use crate::ui::theme::Theme;
 use crate::ui::ui_helpers::{find_tag_by_uuid, tag_fill_color};
@@ -95,7 +98,7 @@ impl NewCheckView {
         ui.label(RichText::new(i18n.t("field-source")).color(theme.text_secondary));
         ui.add_enabled_ui(!self.draft.source_is_locked(), |ui| {
             egui::ComboBox::from_id_salt("new_check_source")
-                .selected_text(source_label(i18n, &self.draft.source))
+                .selected_text(source_label(i18n, self.draft.source))
                 .show_ui(ui, |ui| {
                     for source in [
                         CheckSourceType::Game,
@@ -103,15 +106,10 @@ impl NewCheckView {
                         CheckSourceType::Blueprint,
                         CheckSourceType::Turn,
                     ] {
-                        let label = source_label(i18n, &source);
+                        let label = source_label(i18n, source);
                         let is_selected = self.draft.source == source;
-                        if show_colored_option(
-                            ui,
-                            &label,
-                            source_color(&source, theme),
-                            is_selected,
-                        )
-                        .clicked()
+                        if show_colored_option(ui, &label, source_color(source, theme), is_selected)
+                            .clicked()
                         {
                             self.draft.set_source(source, current_session);
                             ui.close();
@@ -161,7 +159,7 @@ impl NewCheckView {
             ui.label(RichText::new(i18n.t("field-repeat")).color(theme.text_secondary));
             ui.add_enabled_ui(!repeat_locked, |ui| {
                 egui::ComboBox::from_id_salt("new_check_repeat_kind")
-                    .selected_text(repeat_label(i18n, &self.draft.repeat_case))
+                    .selected_text(repeat_editor_label(i18n, self.draft.repeat_case))
                     .show_ui(ui, |ui| {
                         for repeat_case in [
                             CheckRepeatType::Everytime,
@@ -169,11 +167,11 @@ impl NewCheckView {
                             CheckRepeatType::Specific(1),
                             CheckRepeatType::Until(1),
                         ] {
-                            let label = repeat_label(i18n, &repeat_case);
+                            let label = repeat_editor_label(i18n, repeat_case);
                             if show_colored_option(
                                 ui,
                                 &label,
-                                repeat_color(&repeat_case, theme),
+                                repeat_color(repeat_case, theme),
                                 same_repeat_variant(&self.draft.repeat_case, &repeat_case),
                             )
                             .clicked()
@@ -319,24 +317,6 @@ fn sanitize_numeric_input(value: &mut String, max_value: i32) {
     }
 }
 
-fn source_label(i18n: &I18n, source: &CheckSourceType) -> String {
-    match source {
-        CheckSourceType::Game => i18n.t("source-game"),
-        CheckSourceType::GlobalGame => i18n.t("source-global-game"),
-        CheckSourceType::Blueprint => i18n.t("source-blueprint"),
-        CheckSourceType::Turn => i18n.t("source-turn"),
-    }
-}
-
-fn repeat_label(i18n: &I18n, repeat_case: &CheckRepeatType) -> String {
-    match repeat_case {
-        CheckRepeatType::Everytime => i18n.t("repeat-everytime"),
-        CheckRepeatType::Conditional(_) => i18n.t("repeat-conditional"),
-        CheckRepeatType::Specific(_) => i18n.t("repeat-specific"),
-        CheckRepeatType::Until(_) => i18n.t("repeat-until"),
-    }
-}
-
 fn repeat_requires_value(repeat_case: &CheckRepeatType) -> bool {
     !matches!(repeat_case, CheckRepeatType::Everytime)
 }
@@ -371,24 +351,6 @@ fn show_colored_option(
     );
 
     response
-}
-
-fn source_color(source: &CheckSourceType, theme: &Theme) -> egui::Color32 {
-    match source {
-        CheckSourceType::Blueprint => theme.source_blueprint,
-        CheckSourceType::Game => theme.source_game,
-        CheckSourceType::GlobalGame => theme.source_global,
-        CheckSourceType::Turn => theme.source_turn,
-    }
-}
-
-fn repeat_color(repeat_case: &CheckRepeatType, theme: &Theme) -> egui::Color32 {
-    match repeat_case {
-        CheckRepeatType::Everytime => theme.repeat_everytime,
-        CheckRepeatType::Conditional(_) => theme.repeat_conditional,
-        CheckRepeatType::Specific(_) => theme.repeat_specific,
-        CheckRepeatType::Until(_) => theme.repeat_until,
-    }
 }
 
 fn same_repeat_variant(left: &CheckRepeatType, right: &CheckRepeatType) -> bool {

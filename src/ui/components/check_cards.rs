@@ -1,9 +1,9 @@
 use eframe::egui::{self, RichText};
 use egui::Color32;
 
-use crate::i18n::{I18n, I18nValue};
-use crate::models::check_source_type::CheckSourceType;
+use crate::i18n::I18n;
 use crate::models::{Check, CheckRepeatType, Tag};
+use crate::ui::check_presentation::{repeat_badge_label, repeat_color, source_color};
 use crate::ui::components::toggle_button::toggle;
 use crate::ui::theme::Theme;
 use crate::ui::ui_helpers::{find_tag_by_uuid, show_sent_status_icon, show_tag_capsule};
@@ -69,7 +69,7 @@ impl CheckCardsView {
                 .corner_radius(theme.corner_radius)
                 .inner_margin(theme.card_padding)
                 .show(ui, |ui| {
-                    self.show_check_card_header(
+                    Self::show_check_card_header(
                         ui,
                         theme,
                         i18n,
@@ -97,7 +97,6 @@ impl CheckCardsView {
     }
 
     fn show_check_card_header(
-        &mut self,
         ui: &mut egui::Ui,
         theme: &Theme,
         i18n: &I18n,
@@ -109,20 +108,19 @@ impl CheckCardsView {
         let row = ui.horizontal(|ui| {
             let (indicator_rect, _) =
                 ui.allocate_exact_size(egui::vec2(4.0, 1.0), egui::Sense::hover());
-            self.show_check_card_title(ui, theme, i18n, tags, check);
+            Self::show_check_card_title(ui, theme, i18n, tags, check);
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 show_sent_status_icon(ui, theme, check.is_sent);
-                self.show_check_toggle(ui, selected_checked, theme, display_mode);
-                self.show_mandatory_indicator(ui, theme, i18n, check);
+                Self::show_check_toggle(ui, selected_checked, theme, display_mode);
+                Self::show_mandatory_indicator(ui, theme, i18n, check);
             });
             indicator_rect
         });
 
-        self.show_check_source_indicator(ui, theme, check, row.inner, row.response.rect);
+        Self::show_check_source_indicator(ui, theme, check, row.inner, row.response.rect);
     }
 
     fn show_check_source_indicator(
-        &self,
         ui: &mut egui::Ui,
         theme: &Theme,
         check: &Check,
@@ -138,11 +136,10 @@ impl CheckCardsView {
         );
 
         ui.painter()
-            .rect_filled(rect, theme.corner_radius, source_color(check, theme));
+            .rect_filled(rect, theme.corner_radius, source_color(check.source, theme));
     }
 
     fn show_check_card_title(
-        &self,
         ui: &mut egui::Ui,
         theme: &Theme,
         i18n: &I18n,
@@ -173,13 +170,7 @@ impl CheckCardsView {
         });
     }
 
-    fn show_mandatory_indicator(
-        &self,
-        ui: &mut egui::Ui,
-        theme: &Theme,
-        i18n: &I18n,
-        check: &Check,
-    ) {
+    fn show_mandatory_indicator(ui: &mut egui::Ui, theme: &Theme, i18n: &I18n, check: &Check) {
         if check.is_mandatory {
             ui.label(
                 RichText::new(i18n.t("check-mandatory"))
@@ -190,7 +181,6 @@ impl CheckCardsView {
     }
 
     fn show_check_toggle(
-        &mut self,
         ui: &mut egui::Ui,
         selected_checked: &mut bool,
         theme: &Theme,
@@ -205,49 +195,14 @@ impl CheckCardsView {
     }
 }
 
-fn repeat_label(i18n: &I18n, repeat_case: &CheckRepeatType) -> String {
-    match repeat_case {
-        CheckRepeatType::Everytime => i18n.t("repeat-badge-every-turn"),
-        CheckRepeatType::Conditional(value) => i18n.tr(
-            "repeat-badge-conditional",
-            &[("turn", I18nValue::from(*value))],
-        ),
-        CheckRepeatType::Specific(value) => i18n.tr(
-            "repeat-badge-specific",
-            &[("turn", I18nValue::from(*value))],
-        ),
-        CheckRepeatType::Until(value) => {
-            i18n.tr("repeat-badge-until", &[("turn", I18nValue::from(*value))])
-        }
-    }
-}
-
-fn source_color(check: &Check, theme: &Theme) -> egui::Color32 {
-    match check.source {
-        CheckSourceType::Blueprint => theme.source_blueprint,
-        CheckSourceType::Game => theme.source_game,
-        CheckSourceType::GlobalGame => theme.source_global,
-        CheckSourceType::Turn => theme.source_turn,
-    }
-}
-
-fn repeat_color(repeat_case: &CheckRepeatType, theme: &Theme) -> egui::Color32 {
-    match repeat_case {
-        CheckRepeatType::Everytime => theme.repeat_everytime,
-        CheckRepeatType::Conditional(_) => theme.repeat_conditional,
-        CheckRepeatType::Specific(_) => theme.repeat_specific,
-        CheckRepeatType::Until(_) => theme.repeat_until,
-    }
-}
-
 fn show_repeat_badge(ui: &mut egui::Ui, theme: &Theme, i18n: &I18n, repeat_case: &CheckRepeatType) {
     egui::Frame::new()
-        .fill(repeat_color(repeat_case, theme))
+        .fill(repeat_color(*repeat_case, theme))
         .corner_radius(theme.corner_radius)
         .inner_margin(egui::Margin::symmetric(8, 4))
         .show(ui, |ui| {
             ui.label(
-                RichText::new(repeat_label(i18n, repeat_case))
+                RichText::new(repeat_badge_label(i18n, *repeat_case))
                     .color(Color32::WHITE)
                     .family(egui::FontFamily::Name("montserrat-bold".into()))
                     .small(),

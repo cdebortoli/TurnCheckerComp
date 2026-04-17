@@ -52,7 +52,7 @@ impl MainContentView {
     pub(super) fn handle_restart_click(&mut self) {
         self.new_turn_confirmation_open = None;
 
-        match self.count_unsent_records() {
+        match Self::count_unsent_records() {
             Ok(unsent_records) => {
                 self.restart_confirmation_unsent_checks = Some(unsent_records);
             }

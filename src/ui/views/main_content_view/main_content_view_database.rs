@@ -6,15 +6,21 @@ use crate::models::{
 use crate::ui::ui_helpers::{
     apply_check_status_update, apply_comment_content_update, find_comment_by_type_mut,
 };
+use rusqlite::Connection;
+
+struct LoadedContent {
+    checks: Vec<Check>,
+    tags: Vec<Tag>,
+    comments: Vec<Comment>,
+    source_checks: Vec<Check>,
+    current_session: Option<CurrentSession>,
+}
 
 impl MainContentView {
     pub(super) fn sync_external_content_updates(&mut self) {
-        match self.content_refresh_rx.has_changed() {
-            Ok(true) => {
-                self.content_refresh_rx.borrow_and_update();
-                self.needs_reload = true;
-            }
-            Ok(false) | Err(_) => {}
+        if let Ok(true) = self.content_refresh_rx.has_changed() {
+            self.content_refresh_rx.borrow_and_update();
+            self.needs_reload = true;
         }
     }
 
@@ -23,21 +29,9 @@ impl MainContentView {
             return;
         }
 
-        let source_filter = match self.mode {
-            ContentMode::SourceChecks => self
-                .source_checks_config
-                .as_ref()
-                .map(|config| config.source),
-            _ => None,
-        };
-
-        match Self::load_content(source_filter) {
-            Ok((checks, tags, comments, source_checks, current_session)) => {
-                self.checks = checks;
-                self.tags = tags;
-                self.comments = comments;
-                self.source_checks = source_checks;
-                self.current_session = current_session;
+        match Self::load_content(self.source_filter()) {
+            Ok(content) => {
+                self.apply_loaded_content(content);
                 self.try_finish_next_turn_wait();
                 self.error_message = None;
             }
@@ -46,18 +40,25 @@ impl MainContentView {
         self.needs_reload = false;
     }
 
-    fn load_content(
-        source_filter: Option<CheckSourceType>,
-    ) -> Result<
-        (
-            Vec<Check>,
-            Vec<Tag>,
-            Vec<Comment>,
-            Vec<Check>,
-            Option<CurrentSession>,
-        ),
-        String,
-    > {
+    fn source_filter(&self) -> Option<CheckSourceType> {
+        match self.mode {
+            ContentMode::SourceChecks => self
+                .source_checks_config
+                .as_ref()
+                .map(|config| config.source),
+            _ => None,
+        }
+    }
+
+    fn apply_loaded_content(&mut self, content: LoadedContent) {
+        self.checks = content.checks;
+        self.tags = content.tags;
+        self.comments = content.comments;
+        self.source_checks = content.source_checks;
+        self.current_session = content.current_session;
+    }
+
+    fn load_content(source_filter: Option<CheckSourceType>) -> Result<LoadedContent, String> {
         let connection = database::establish_connection().map_err(|err| err.to_string())?;
         let checks = database::checks::fetch_all(&connection).map_err(|err| err.to_string())?;
         let tags = database::tags::fetch_all(&connection).map_err(|err| err.to_string())?;
@@ -69,7 +70,24 @@ impl MainContentView {
         };
         let current_session =
             database::current_session::fetch(&connection).map_err(|err| err.to_string())?;
-        Ok((checks, tags, comments, source_checks, current_session))
+
+        Ok(LoadedContent {
+            checks,
+            tags,
+            comments,
+            source_checks,
+            current_session,
+        })
+    }
+
+    fn write_and_mark_dirty(
+        &mut self,
+        write: impl FnOnce(&Connection) -> Result<(), String>,
+    ) -> Result<(), String> {
+        let connection = database::establish_connection().map_err(|err| err.to_string())?;
+        write(&connection)?;
+        self.needs_reload = true;
+        Ok(())
     }
 
     pub(super) fn update_check_status(
@@ -78,10 +96,9 @@ impl MainContentView {
         is_checked: bool,
     ) -> Result<(), String> {
         check = apply_check_status_update(check, is_checked);
-        let connection = database::establish_connection().map_err(|err| err.to_string())?;
-        database::checks::update(&connection, &check).map_err(|err| err.to_string())?;
-        self.needs_reload = true;
-        Ok(())
+        self.write_and_mark_dirty(|connection| {
+            database::checks::update(connection, &check).map_err(|err| err.to_string())
+        })
     }
 
     pub(super) fn update_comment_content(
@@ -117,20 +134,20 @@ impl MainContentView {
     }
 
     pub(super) fn insert_new_check(&mut self, check: Check) -> Result<(), String> {
-        let connection = database::establish_connection().map_err(|err| err.to_string())?;
-        database::checks::insert(&connection, &check).map_err(|err| err.to_string())?;
-        self.needs_reload = true;
-        Ok(())
+        self.write_and_mark_dirty(|connection| {
+            database::checks::insert(connection, &check)
+                .map(|_| ())
+                .map_err(|err| err.to_string())
+        })
     }
 
     pub(super) fn update_existing_check(&mut self, check: Check) -> Result<(), String> {
-        let connection = database::establish_connection().map_err(|err| err.to_string())?;
-        database::checks::update(&connection, &check).map_err(|err| err.to_string())?;
-        self.needs_reload = true;
-        Ok(())
+        self.write_and_mark_dirty(|connection| {
+            database::checks::update(connection, &check).map_err(|err| err.to_string())
+        })
     }
 
-    pub(super) fn count_unsent_records(&self) -> Result<usize, String> {
+    pub(super) fn count_unsent_records() -> Result<usize, String> {
         let connection = database::establish_connection().map_err(|err| err.to_string())?;
         let checks = database::checks::count_unsent(&connection).map_err(|err| err.to_string())?;
         let comments = database::comments::fetch_unsent(&connection)

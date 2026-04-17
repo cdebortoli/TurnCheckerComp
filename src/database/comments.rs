@@ -69,7 +69,7 @@ pub fn upsert(connection: &Connection, comment: &Comment) -> Result<i64> {
     )?;
 
     Ok(fetch_by_uuid(connection, &comment.uuid)?
-        .expect("comment upsert should persist row")
+        .ok_or_else(|| anyhow::anyhow!("comment upsert should persist row"))?
         .id)
 }
 

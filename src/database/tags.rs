@@ -71,7 +71,7 @@ pub fn upsert(connection: &Connection, tag: &Tag) -> Result<i64> {
     )?;
 
     Ok(fetch_by_uuid(connection, &tag.uuid)?
-        .expect("tag upsert should persist row")
+        .ok_or_else(|| anyhow::anyhow!("tag upsert should persist row"))?
         .id)
 }
 

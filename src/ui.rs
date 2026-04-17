@@ -290,8 +290,9 @@ impl eframe::App for TurnCheckerApp {
         // Check if ready and so that the server must be running
         self.startup
             .ensure_started(&mut self.runtime, &self.pairing_state);
-        // If server started but server_connection data not processed, configuring pairing system/view
-        self.startup.sync_pairing_connection(&mut self.pairing);
+        if let Some(server_connection) = self.startup.take_server_connection() {
+            self.pairing.set_server_connection(server_connection);
+        }
 
         // UI - Full screen panel with theme background
         egui::CentralPanel::default()
@@ -313,13 +314,8 @@ impl eframe::App for TurnCheckerApp {
                         if let Some(action) = self.content.show(ui) {
                             self.handle_content_action(action);
                         }
-                    } else if self.startup.server_started {
-                        self.pairing.show_waiting(ui);
                     } else {
-                        ui.label(
-                            RichText::new(self.i18n.t("app-server-starting"))
-                                .color(theme.text_muted),
-                        );
+                        self.pairing.show_waiting(ui, &theme);
                     }
 
                     self.startup.show_restore_modal(

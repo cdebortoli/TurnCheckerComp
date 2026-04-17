@@ -24,17 +24,12 @@ impl PairingView {
         self.qr_texture = None;
     }
 
-    pub fn show_waiting(&mut self, ui: &mut egui::Ui) {
-        let theme = Theme::from_visuals(ui.visuals());
-
-        egui::CentralPanel::default()
-            .frame(
-                egui::Frame::new()
-                    .fill(theme.bg_turn_card)
-                    .inner_margin(theme.spacing_md)
-                    .corner_radius(theme.corner_radius),
-            )
-            .show_inside(ui, |ui| {
+    pub fn show_waiting(&mut self, ui: &mut egui::Ui, theme: &Theme) {
+        egui::Frame::new()
+            .fill(theme.bg_turn_card)
+            .inner_margin(theme.spacing_md)
+            .corner_radius(theme.corner_radius)
+            .show(ui, |ui| {
                 ui.heading(RichText::new(self.i18n.t("pairing-title")).color(theme.text_primary));
                 ui.label(
                     RichText::new(self.i18n.t("pairing-description")).color(theme.text_secondary),

@@ -9,13 +9,11 @@ use crate::{
 };
 
 use super::theme::Theme;
-use super::views::pairing_view::PairingView;
 use egui::RichText;
 
 pub struct StartupController {
     i18n: I18n,
     state: StartupState,
-    pub server_started: bool,
     server_connection: Option<server::ServerConnectionInfo>,
     content_refresh_tx: watch::Sender<u64>,
     push_notification_client: server::PushNotificationClient,
@@ -23,6 +21,7 @@ pub struct StartupController {
 
 enum StartupState {
     NeedsDecision { unsent_records: usize },
+    Starting,
     Ready,
     Failed(String),
 }
@@ -34,7 +33,7 @@ impl StartupController {
         i18n: I18n,
     ) -> Self {
         let state = match database::inspect_startup_state() {
-            Ok(database::DatabaseStartupState::Ready) => StartupState::Ready,
+            Ok(database::DatabaseStartupState::Ready) => StartupState::Starting,
             Ok(database::DatabaseStartupState::NeedsUserDecision { unsent_records }) => {
                 StartupState::NeedsDecision { unsent_records }
             }
@@ -44,7 +43,6 @@ impl StartupController {
         Self {
             i18n,
             state,
-            server_started: false,
             server_connection: None,
             content_refresh_tx,
             push_notification_client,
@@ -52,7 +50,7 @@ impl StartupController {
     }
 
     pub fn ensure_started(&mut self, runtime: &mut Runtime, pairing_state: &server::PairingState) {
-        if matches!(self.state, StartupState::Ready) && !self.server_started {
+        if matches!(self.state, StartupState::Starting) {
             self.continue_startup(runtime, pairing_state);
         }
     }
@@ -61,32 +59,25 @@ impl StartupController {
         matches!(self.state, StartupState::Ready)
     }
 
-    pub fn sync_pairing_connection(&mut self, pairing: &mut PairingView) {
-        if let Some(server_connection) = self.server_connection.take() {
-            pairing.set_server_connection(server_connection);
-        }
+    pub fn take_server_connection(&mut self) -> Option<server::ServerConnectionInfo> {
+        self.server_connection.take()
     }
 
     pub fn show_status(&self, ui: &mut egui::Ui, theme: &Theme) {
-        egui::CentralPanel::default()
-            .frame(
-                egui::Frame::new()
-                    .fill(theme.bg_turn_card)
-                    .inner_margin(theme.spacing_md)
-                    .corner_radius(theme.corner_radius),
-            )
-            .show_inside(ui, |ui| match &self.state {
+        egui::Frame::new()
+            .fill(theme.bg_turn_card)
+            .inner_margin(theme.spacing_md)
+            .corner_radius(theme.corner_radius)
+            .show(ui, |ui| match &self.state {
                 StartupState::NeedsDecision { .. } => {
                     ui.label(RichText::new(self.i18n.t("startup-waiting")).color(theme.text_muted));
                 }
-                StartupState::Ready => {
-                    if !self.server_started {
-                        ui.label(
-                            RichText::new(self.i18n.t("app-server-starting"))
-                                .color(theme.text_muted),
-                        );
-                    }
+                StartupState::Starting => {
+                    ui.label(
+                        RichText::new(self.i18n.t("app-server-starting")).color(theme.text_muted),
+                    );
                 }
+                StartupState::Ready => {}
                 StartupState::Failed(message) => {
                     ui.label(
                         RichText::new(self.i18n.t("startup-failed")).color(theme.text_primary),
@@ -146,10 +137,11 @@ impl StartupController {
     }
 
     fn continue_startup(&mut self, runtime: &mut Runtime, pairing_state: &server::PairingState) {
-        if self.server_started {
-            self.state = StartupState::Ready;
+        if matches!(self.state, StartupState::Ready) {
             return;
         }
+
+        self.state = StartupState::Starting;
 
         match runtime.block_on(server::spawn(
             pairing_state.clone(),
@@ -157,7 +149,6 @@ impl StartupController {
             self.push_notification_client.clone(),
         )) {
             Ok(server_connection) => {
-                self.server_started = true;
                 self.server_connection = Some(server_connection);
                 self.state = StartupState::Ready;
             }

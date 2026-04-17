@@ -53,21 +53,26 @@ pub fn fetch_by_uuid(connection: &Connection, uuid: &uuid::Uuid) -> Result<Optio
 }
 
 pub fn upsert(connection: &Connection, tag: &Tag) -> Result<i64> {
-    if let Some(existing) = fetch_by_uuid(connection, &tag.uuid)? {
-        connection.execute(
-            "UPDATE tags SET name = ?1, color = ?2, text_color = ?3, is_sent = ?4 WHERE uuid = ?5",
-            params![
-                tag.name,
-                tag.color,
-                tag.text_color,
-                bool_to_sqlite(tag.is_sent),
-                tag.uuid.to_string(),
-            ],
-        )?;
-        Ok(existing.id)
-    } else {
-        insert(connection, tag)
-    }
+    connection.execute(
+        "INSERT INTO tags (uuid, name, color, text_color, is_sent)
+         VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT(uuid) DO UPDATE SET
+             name = excluded.name,
+             color = excluded.color,
+             text_color = excluded.text_color,
+             is_sent = excluded.is_sent",
+        params![
+            tag.uuid.to_string(),
+            tag.name,
+            tag.color,
+            tag.text_color,
+            bool_to_sqlite(tag.is_sent)
+        ],
+    )?;
+
+    Ok(fetch_by_uuid(connection, &tag.uuid)?
+        .expect("tag upsert should persist row")
+        .id)
 }
 
 #[cfg(test)]

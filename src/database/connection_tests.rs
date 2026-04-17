@@ -16,7 +16,7 @@ fn startup_state_detects_unsent_records() -> Result<()> {
     let db_path = temp_dir.join("startup.db");
 
     assert_eq!(
-        inspect_startup_state_at(db_path.clone())?,
+        inspect_startup_state_at(&db_path)?,
         DatabaseStartupState::Ready
     );
 
@@ -27,7 +27,7 @@ fn startup_state_detects_unsent_records() -> Result<()> {
     current_session::upsert(&connection, &session)?;
 
     assert_eq!(
-        inspect_startup_state_at(db_path)?,
+        inspect_startup_state_at(&db_path)?,
         DatabaseStartupState::NeedsUserDecision { unsent_records: 1 }
     );
 
@@ -52,7 +52,7 @@ fn startup_state_resets_existing_database_without_unsent_records() -> Result<()>
     drop(connection);
 
     assert_eq!(
-        inspect_startup_state_at(db_path.clone())?,
+        inspect_startup_state_at(&db_path)?,
         DatabaseStartupState::Ready
     );
 
@@ -77,7 +77,7 @@ fn reset_database_recreates_empty_schema() -> Result<()> {
     current_session::upsert(&connection, &session)?;
     drop(connection);
 
-    reset_database_at(db_path.clone())?;
+    reset_database_at(&db_path)?;
 
     let connection = establish_connection_at(&db_path)?;
     assert!(checks::fetch_all(&connection)?.is_empty());

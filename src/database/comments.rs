@@ -7,6 +7,7 @@ use super::common::{
 };
 use crate::models::{Comment, CommentType};
 
+#[cfg(test)]
 pub fn insert(connection: &Connection, comment: &Comment) -> Result<i64> {
     connection.execute(
         "INSERT INTO comments (uuid, comment_type, content, is_sent) VALUES (?1, ?2, ?3, ?4)",
@@ -52,20 +53,24 @@ pub fn fetch_by_uuid(connection: &Connection, uuid: &uuid::Uuid) -> Result<Optio
 }
 
 pub fn upsert(connection: &Connection, comment: &Comment) -> Result<i64> {
-    if let Some(existing) = fetch_by_uuid(connection, &comment.uuid)? {
-        connection.execute(
-            "UPDATE comments SET comment_type = ?1, content = ?2, is_sent = ?3 WHERE uuid = ?4",
-            params![
-                comment.comment_type.as_str(),
-                comment.content,
-                bool_to_sqlite(comment.is_sent),
-                comment.uuid.to_string()
-            ],
-        )?;
-        Ok(existing.id)
-    } else {
-        insert(connection, comment)
-    }
+    connection.execute(
+        "INSERT INTO comments (uuid, comment_type, content, is_sent)
+         VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT(uuid) DO UPDATE SET
+             comment_type = excluded.comment_type,
+             content = excluded.content,
+             is_sent = excluded.is_sent",
+        params![
+            comment.uuid.to_string(),
+            comment.comment_type.as_str(),
+            comment.content,
+            bool_to_sqlite(comment.is_sent)
+        ],
+    )?;
+
+    Ok(fetch_by_uuid(connection, &comment.uuid)?
+        .expect("comment upsert should persist row")
+        .id)
 }
 
 #[cfg(test)]

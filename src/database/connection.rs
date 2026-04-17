@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use rusqlite::Connection;
@@ -24,10 +24,11 @@ pub fn database_path() -> PathBuf {
 }
 
 pub fn establish_connection() -> Result<Connection> {
-    establish_connection_at(&database_path())
+    let path = database_path();
+    establish_connection_at(&path)
 }
 
-pub fn establish_connection_at(path: &PathBuf) -> Result<Connection> {
+pub fn establish_connection_at(path: &Path) -> Result<Connection> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -64,15 +65,16 @@ fn remove_if_exists(path: &std::path::Path) -> Result<()> {
 }
 
 pub fn reset_database() -> Result<()> {
-    reset_database_at(database_path())
+    let path = database_path();
+    reset_database_at(&path)
 }
 
-pub fn reset_database_at(path: PathBuf) -> Result<()> {
-    remove_if_exists(&path)?;
-    remove_if_exists(&wal_path(&path))?;
-    remove_if_exists(&shm_path(&path))?;
+pub fn reset_database_at(path: &Path) -> Result<()> {
+    remove_if_exists(path)?;
+    remove_if_exists(&wal_path(path))?;
+    remove_if_exists(&shm_path(path))?;
 
-    let _connection = establish_connection_at(&path)?;
+    let _connection = establish_connection_at(path)?;
     Ok(())
 }
 
@@ -133,12 +135,13 @@ fn configure_connection(connection: &Connection) -> Result<()> {
 }
 
 pub fn inspect_startup_state() -> Result<DatabaseStartupState> {
-    inspect_startup_state_at(database_path())
+    let path = database_path();
+    inspect_startup_state_at(&path)
 }
 
-pub fn inspect_startup_state_at(path: PathBuf) -> Result<DatabaseStartupState> {
+pub fn inspect_startup_state_at(path: &Path) -> Result<DatabaseStartupState> {
     let file_exists = path.exists();
-    let connection = establish_connection_at(&path)?;
+    let connection = establish_connection_at(path)?;
     if !file_exists {
         return Ok(DatabaseStartupState::Ready);
     }

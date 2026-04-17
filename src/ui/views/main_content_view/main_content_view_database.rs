@@ -3,9 +3,7 @@ use crate::database;
 use crate::models::{
     check_source_type::CheckSourceType, Check, Comment, CommentType, CurrentSession, Tag,
 };
-use crate::ui::ui_helpers::{
-    apply_check_status_update, apply_comment_content_update, find_comment_by_type_mut,
-};
+use crate::ui::ui_helpers::{apply_check_status_update, find_comment_by_type_mut};
 use rusqlite::Connection;
 
 struct LoadedContent {
@@ -106,29 +104,22 @@ impl MainContentView {
         comment_type: CommentType,
         content: String,
     ) -> Result<(), String> {
-        let updated_comment = {
-            let comment =
-                find_comment_by_type_mut(&mut self.comments, comment_type).ok_or_else(|| {
-                    self.i18n.tr(
-                        "content-missing-comment-slot",
-                        &[(
-                            "comment_type",
-                            comment_type_label(&self.i18n, &comment_type).into(),
-                        )],
-                    )
-                })?;
-            let updated = apply_comment_content_update(comment.clone(), content);
-            *comment = updated.clone();
-            updated
-        };
+        let missing_comment_message = self.i18n.tr(
+            "content-missing-comment-slot",
+            &[(
+                "comment_type",
+                comment_type_label(&self.i18n, &comment_type).into(),
+            )],
+        );
+        let comment = find_comment_by_type_mut(&mut self.comments, comment_type)
+            .ok_or(missing_comment_message)?;
+
+        comment.content = content;
+        comment.is_sent = false;
 
         let connection = database::establish_connection().map_err(|err| err.to_string())?;
-        let id = database::comments::upsert(&connection, &updated_comment)
-            .map_err(|err| err.to_string())?;
-
-        if let Some(comment) = find_comment_by_type_mut(&mut self.comments, comment_type) {
-            comment.id = id;
-        }
+        comment.id =
+            database::comments::upsert(&connection, comment).map_err(|err| err.to_string())?;
 
         Ok(())
     }

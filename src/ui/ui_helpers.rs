@@ -9,6 +9,7 @@ pub(super) fn apply_check_status_update(mut check: Check, is_checked: bool) -> C
     check
 }
 
+#[cfg(test)]
 pub(super) fn apply_comment_content_update(
     mut comment: Comment,
     content: impl Into<String>,

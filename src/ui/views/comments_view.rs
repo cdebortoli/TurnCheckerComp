@@ -32,7 +32,7 @@ impl CommentsView {
         ui: &mut egui::Ui,
         theme: &Theme,
         i18n: &I18n,
-        comments: &mut Vec<Comment>,
+        comments: &mut [Comment],
     ) -> Option<CommentsAction> {
         egui::Frame::new()
             .fill(theme.bg_list)
@@ -49,7 +49,7 @@ impl CommentsView {
         ui: &mut egui::Ui,
         theme: &Theme,
         i18n: &I18n,
-        comments: &mut Vec<Comment>,
+        comments: &mut [Comment],
     ) -> Option<CommentsAction> {
         ui.heading(RichText::new(i18n.t("comments-title")).color(theme.text_primary));
         ui.add_space(theme.spacing_xs);

@@ -1,8 +1,10 @@
-use std::collections::HashSet;
-
 use anyhow::Result;
 use rusqlite::{params, Connection, OptionalExtension, Row};
 
+use super::common::{
+    bool_to_sqlite, delete_sent_missing_uuids as delete_sent_missing_uuids_in_table,
+    mark_sent_by_uuids as mark_sent_by_uuids_in_table, parse_uuid, sqlite_to_bool,
+};
 use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType};
 
@@ -167,39 +169,17 @@ pub fn update(connection: &Connection, check: &Check) -> Result<()> {
 }
 
 pub fn mark_sent_by_uuids(connection: &Connection, uuids: &[uuid::Uuid]) -> Result<usize> {
-    let mut updated = 0;
-    for uuid in uuids {
-        updated += connection.execute(
-            "UPDATE checks SET is_sent = 1 WHERE uuid = ?1",
-            [uuid.to_string()],
-        )?;
-    }
-
-    Ok(updated)
+    mark_sent_by_uuids_in_table(connection, "checks", uuids)
 }
 
+#[cfg(test)]
 pub fn delete(connection: &Connection, id: i64) -> Result<()> {
     connection.execute("DELETE FROM checks WHERE id = ?1", [id])?;
     Ok(())
 }
 
 pub fn delete_sent_missing_uuids(connection: &Connection, uuids: &[uuid::Uuid]) -> Result<usize> {
-    let retained: HashSet<uuid::Uuid> = uuids.iter().copied().collect();
-    let mut statement = connection.prepare("SELECT id, uuid FROM checks WHERE is_sent = 1")?;
-    let rows = statement.query_map([], |row| {
-        Ok((row.get::<_, i64>(0)?, parse_uuid(row.get::<_, String>(1)?)))
-    })?;
-
-    let mut deleted = 0;
-    for row in rows {
-        let (id, uuid) = row?;
-        if !retained.contains(&uuid) {
-            delete(connection, id)?;
-            deleted += 1;
-        }
-    }
-
-    Ok(deleted)
+    delete_sent_missing_uuids_in_table(connection, "checks", uuids)
 }
 
 fn row_to_check(row: &Row<'_>) -> rusqlite::Result<Check> {
@@ -221,22 +201,6 @@ fn row_to_check(row: &Row<'_>) -> rusqlite::Result<Check> {
         is_checked: sqlite_to_bool(row.get(10)?),
         is_sent: sqlite_to_bool(row.get(11)?),
     })
-}
-
-fn parse_uuid(value: String) -> uuid::Uuid {
-    uuid::Uuid::parse_str(&value).unwrap_or_else(|_| uuid::Uuid::nil())
-}
-
-fn bool_to_sqlite(value: bool) -> i64 {
-    if value {
-        1
-    } else {
-        0
-    }
-}
-
-fn sqlite_to_bool(value: i64) -> bool {
-    value != 0
 }
 
 #[cfg(test)]

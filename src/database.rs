@@ -1,5 +1,6 @@
 pub mod checks;
 pub mod comments;
+mod common;
 pub mod connection;
 pub mod current_session;
 pub mod tags;

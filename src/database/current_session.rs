@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use rusqlite::{params, Connection, OptionalExtension, Row};
-use uuid::Uuid;
 
+use super::common::parse_uuid;
 use crate::models::CurrentSession;
 
 const SINGLETON_ID: i64 = 1;
@@ -94,10 +94,6 @@ fn row_to_current_session(row: &Row<'_>) -> rusqlite::Result<CurrentSession> {
         turn_number: row.get(2)?,
         new_turn_number: row.get(3)?,
     })
-}
-
-fn parse_uuid(value: String) -> Uuid {
-    Uuid::parse_str(&value).unwrap_or_else(|_| Uuid::nil())
 }
 
 #[cfg(test)]

@@ -65,11 +65,10 @@ mod windows {
         fn load() -> Self {
             let config_path = ensure_companion_files();
 
-            let file = match fs::read_to_string(&config_path) {
-                Ok(contents) => toml::from_str::<GraphicsConfigFile>(&contents)
-                    .unwrap_or_else(|error| GraphicsConfigFile::default()),
-                Err(error) => GraphicsConfigFile::default(),
-            };
+            let file = fs::read_to_string(&config_path)
+                .ok()
+                .and_then(|contents| toml::from_str::<GraphicsConfigFile>(&contents).ok())
+                .unwrap_or_default();
 
             let renderer = parse_renderer(file.renderer.as_deref());
             let transparency = file.transparency.unwrap_or(true);
@@ -121,50 +120,36 @@ mod windows {
     }
 
     fn parse_renderer(raw: Option<&str>) -> eframe::Renderer {
-        match normalize(raw) {
-            None => eframe::Renderer::Glow,
-            Some(value) if value == "glow" => eframe::Renderer::Glow,
-            Some(value) if value == "wgpu" => eframe::Renderer::Wgpu,
-            Some(value) => eframe::Renderer::Glow,
+        match normalize(raw).as_deref() {
+            Some("wgpu") => eframe::Renderer::Wgpu,
+            _ => eframe::Renderer::Glow,
         }
     }
 
     fn parse_glow_hardware_acceleration(raw: Option<&str>) -> eframe::HardwareAcceleration {
-        match normalize(raw) {
-            None => eframe::HardwareAcceleration::Required,
-            Some(value) if value == "off" || value == "software" => {
-                eframe::HardwareAcceleration::Off
-            }
-            Some(value) if value == "preferred" => eframe::HardwareAcceleration::Preferred,
-            Some(value) if value == "required" => eframe::HardwareAcceleration::Required,
-            Some(value) => eframe::HardwareAcceleration::Required,
+        match normalize(raw).as_deref() {
+            Some("off" | "software") => eframe::HardwareAcceleration::Off,
+            Some("preferred") => eframe::HardwareAcceleration::Preferred,
+            _ => eframe::HardwareAcceleration::Required,
         }
     }
 
     fn parse_wgpu_present_mode(raw: Option<&str>) -> eframe::wgpu::PresentMode {
-        match normalize(raw) {
-            None => eframe::wgpu::PresentMode::Fifo,
-            Some(value) if value == "fifo" => eframe::wgpu::PresentMode::Fifo,
-            Some(value) if value == "mailbox" => eframe::wgpu::PresentMode::Mailbox,
-            Some(value) if value == "immediate" => eframe::wgpu::PresentMode::Immediate,
-            Some(value) if value == "auto_vsync" => eframe::wgpu::PresentMode::AutoVsync,
-            Some(value) if value == "auto_no_vsync" => eframe::wgpu::PresentMode::AutoNoVsync,
-            Some(value) if value == "fifo_relaxed" => eframe::wgpu::PresentMode::FifoRelaxed,
-            Some(value) => eframe::wgpu::PresentMode::Fifo,
+        match normalize(raw).as_deref() {
+            Some("mailbox") => eframe::wgpu::PresentMode::Mailbox,
+            Some("immediate") => eframe::wgpu::PresentMode::Immediate,
+            Some("auto_vsync") => eframe::wgpu::PresentMode::AutoVsync,
+            Some("auto_no_vsync") => eframe::wgpu::PresentMode::AutoNoVsync,
+            Some("fifo_relaxed") => eframe::wgpu::PresentMode::FifoRelaxed,
+            _ => eframe::wgpu::PresentMode::Fifo,
         }
     }
 
     fn parse_wgpu_power_preference(raw: Option<&str>) -> eframe::wgpu::PowerPreference {
-        match normalize(raw) {
-            None => eframe::wgpu::PowerPreference::LowPower,
-            Some(value) if value == "low" || value == "low_power" => {
-                eframe::wgpu::PowerPreference::LowPower
-            }
-            Some(value) if value == "high" || value == "high_performance" => {
-                eframe::wgpu::PowerPreference::HighPerformance
-            }
-            Some(value) if value == "none" => eframe::wgpu::PowerPreference::None,
-            Some(value) => eframe::wgpu::PowerPreference::LowPower,
+        match normalize(raw).as_deref() {
+            Some("high" | "high_performance") => eframe::wgpu::PowerPreference::HighPerformance,
+            Some("none") => eframe::wgpu::PowerPreference::None,
+            _ => eframe::wgpu::PowerPreference::LowPower,
         }
     }
 

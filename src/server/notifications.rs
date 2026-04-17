@@ -59,7 +59,7 @@ impl PushNotificationClient {
             Ok(guard) => guard,
             Err(poisoned) => poisoned.into_inner(),
         };
-        *stored_device_token = normalize_optional_string(device_token);
+        *stored_device_token = normalize_optional_str(device_token.as_deref()).map(str::to_owned);
     }
 
     pub fn device_token(&self) -> Option<String> {
@@ -80,11 +80,8 @@ impl PushNotificationClient {
             .ok_or_else(|| anyhow::anyhow!(i18n.t("notification-device-token-unavailable")))?;
 
         let mut data_map = Map::new();
-        let new_turn_value = Value::String("new_turn".to_string());
-        data_map.insert("type".to_string(), new_turn_value);
-        if let Ok(id_value) = serde_json::to_value(Uuid::new_v4()) {
-            data_map.insert("id".to_string(), id_value);
-        }
+        data_map.insert("type".to_string(), Value::String("new_turn".to_string()));
+        data_map.insert("id".to_string(), Value::String(Uuid::new_v4().to_string()));
 
         let bearer_token = push_notification_bearer_token()?;
         let title = i18n.t("notification-title-new-turn");
@@ -126,16 +123,14 @@ fn default_push_notification_environment() -> PushNotificationEnvironment {
 }
 
 fn push_notification_bearer_token() -> anyhow::Result<String> {
-    if let Some(token) =
-        normalize_optional_string(env::var(PUSH_NOTIFICATION_BEARER_TOKEN_ENV).ok())
-    {
-        return Ok(token);
+    let env_token = env::var(PUSH_NOTIFICATION_BEARER_TOKEN_ENV).ok();
+    if let Some(token) = normalize_optional_str(env_token.as_deref()) {
+        return Ok(token.to_owned());
     }
 
-    if let Some(path) =
-        normalize_optional_string(env::var(PUSH_NOTIFICATION_BEARER_TOKEN_FILE_ENV).ok())
-    {
-        if let Some(token) = read_bearer_token_file(Path::new(&path))? {
+    let token_file_env = env::var(PUSH_NOTIFICATION_BEARER_TOKEN_FILE_ENV).ok();
+    if let Some(path) = normalize_optional_str(token_file_env.as_deref()) {
+        if let Some(token) = read_bearer_token_file(Path::new(path))? {
             return Ok(token);
         }
     }
@@ -169,7 +164,7 @@ fn push_notification_bearer_token() -> anyhow::Result<String> {
 
 fn read_bearer_token_file(path: &Path) -> anyhow::Result<Option<String>> {
     match fs::read_to_string(path) {
-        Ok(contents) => Ok(normalize_optional_string(Some(contents))),
+        Ok(contents) => Ok(normalize_optional_str(Some(&contents)).map(str::to_owned)),
         Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
         Err(error) => {
             let i18n = I18n::system();
@@ -212,10 +207,6 @@ fn normalize_optional_str(value: Option<&str>) -> Option<&str> {
             Some(trimmed)
         }
     })
-}
-
-fn normalize_optional_string(value: Option<String>) -> Option<String> {
-    normalize_optional_str(value.as_deref()).map(str::to_string)
 }
 
 #[cfg(test)]

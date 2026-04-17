@@ -102,7 +102,7 @@ impl TurnCheckerApp {
         }
     }
 
-    fn restore_window_position(&self, ctx: &egui::Context, position: Option<egui::Pos2>) {
+    fn restore_window_position(ctx: &egui::Context, position: Option<egui::Pos2>) {
         if let Some(position) = position {
             ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(position));
         }
@@ -116,14 +116,13 @@ impl TurnCheckerApp {
         self.sync_window_state(ctx);
 
         if minimal_mode {
-            self.sync_window_state(ctx);
             let minimal_size = Self::minimal_window_size();
             ctx.send_viewport_cmd(egui::ViewportCommand::Decorations(false));
             ctx.send_viewport_cmd(egui::ViewportCommand::Resizable(false));
             ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(minimal_size));
             ctx.send_viewport_cmd(egui::ViewportCommand::MaxInnerSize(minimal_size));
             ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(minimal_size));
-            self.restore_window_position(ctx, self.minimal_window_position);
+            Self::restore_window_position(ctx, self.minimal_window_position);
         } else {
             ctx.send_viewport_cmd(egui::ViewportCommand::Decorations(true));
             ctx.send_viewport_cmd(egui::ViewportCommand::Resizable(true));
@@ -132,7 +131,7 @@ impl TurnCheckerApp {
             ));
             ctx.send_viewport_cmd(egui::ViewportCommand::MaxInnerSize(egui::Vec2::INFINITY));
             ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(self.classic_window_size));
-            self.restore_window_position(ctx, self.classic_window_position);
+            Self::restore_window_position(ctx, self.classic_window_position);
         }
 
         self.minimal_mode = minimal_mode;

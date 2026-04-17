@@ -11,7 +11,7 @@ use axum::{Json, Router};
 use chrono::Utc;
 use tokio::sync::watch;
 
-use crate::{database, i18n::I18n};
+use crate::{database, i18n::I18n, models::CurrentSession};
 
 use super::dto::{
     ErrorResponse, HealthResponse, SyncAckRequest, SyncAckResponse, SyncConnectRequest,
@@ -144,14 +144,9 @@ impl HttpServer {
     async fn sync_connect(
         State(state): State<AppState>,
         request: Result<Json<SyncConnectRequest>, JsonRejection>,
-    ) -> Result<Json<SyncConnectResponse>, Response> {
+    ) -> Result<Json<SyncConnectResponse>, AppError> {
         let request = parse_json_request("/sync/connect", request)?;
-        if let Err(error) = state
-            .service
-            .validate_received_session(&request.current_session)
-        {
-            return Err(conflict_response(error));
-        }
+        validate_received_session(&state, &request.current_session)?;
         state
             .push_notification_client
             .set_device_token(request.device_token);
@@ -165,58 +160,37 @@ impl HttpServer {
     async fn sync_pull(
         State(state): State<AppState>,
         request: Result<Json<SyncPullRequest>, JsonRejection>,
-    ) -> Result<Json<SyncPullResponse>, Response> {
+    ) -> Result<Json<SyncPullResponse>, AppError> {
         let request = parse_json_request("/sync/pull", request)?;
-        match state.service.pull(request) {
-            Ok(response) => {
-                notify_content_changed(&state.content_refresh_tx);
-                Ok(Json(response))
-            }
-            Err(error) => Err(AppError::from(error).into_response()),
-        }
+        respond_with_refresh(&state, state.service.pull(request))
     }
 
     async fn sync_push(
         State(state): State<AppState>,
         request: Result<Json<SyncPushRequest>, JsonRejection>,
-    ) -> Result<Json<SyncPushResponse>, Response> {
+    ) -> Result<Json<SyncPushResponse>, AppError> {
         let request = parse_json_request("/sync/push", request)?;
-        if let Err(error) = state.service.validate_push_request(&request) {
-            return Err(conflict_response(error));
-        }
-        match state.service.push(request) {
-            Ok(response) => {
-                notify_content_changed(&state.content_refresh_tx);
-                Ok(Json(response))
-            }
-            Err(error) => Err(AppError::from(error).into_response()),
-        }
+        validate_received_session(&state, &request.current_session)?;
+        respond_with_refresh(&state, state.service.push(request))
     }
 
     async fn sync_ack(
         State(state): State<AppState>,
         request: Result<Json<SyncAckRequest>, JsonRejection>,
-    ) -> Result<Json<SyncAckResponse>, Response> {
+    ) -> Result<Json<SyncAckResponse>, AppError> {
         let request = parse_json_request("/sync/ack", request)?;
-        state
-            .service
-            .ack(request)
-            .map(|response| {
-                notify_content_changed(&state.content_refresh_tx);
-                Json(response)
-            })
-            .map_err(|error| AppError::from(error).into_response())
+        respond_with_refresh(&state, state.service.ack(request))
     }
 }
 
-fn conflict_response(error: anyhow::Error) -> Response {
-    (
-        StatusCode::CONFLICT,
-        Json(ErrorResponse {
-            error: error.to_string(),
-        }),
-    )
-        .into_response()
+fn validate_received_session(
+    state: &AppState,
+    current_session: &Option<CurrentSession>,
+) -> Result<(), AppError> {
+    state
+        .service
+        .validate_received_session(current_session)
+        .map_err(AppError::conflict)
 }
 
 fn notify_content_changed(content_refresh_tx: &watch::Sender<u64>) {
@@ -233,7 +207,7 @@ fn discover_local_ip() -> anyhow::Result<IpAddr> {
 fn parse_json_request<T>(
     route: &'static str,
     request: Result<Json<T>, JsonRejection>,
-) -> Result<T, Response> {
+) -> Result<T, AppError> {
     match request {
         Ok(Json(request)) => Ok(request),
         Err(rejection) => {
@@ -243,32 +217,49 @@ fn parse_json_request<T>(
                 "json rejection on {route}: status={} error={error}",
                 status.as_u16()
             );
-            Err((status, Json(ErrorResponse { error })).into_response())
+            Err(AppError::json(status, error))
         }
     }
 }
 
-#[derive(Debug)]
-struct AppError(anyhow::Error);
+fn respond_with_refresh<T>(
+    state: &AppState,
+    result: anyhow::Result<T>,
+) -> Result<Json<T>, AppError> {
+    let response = result.map_err(AppError::internal)?;
+    notify_content_changed(&state.content_refresh_tx);
+    Ok(Json(response))
+}
 
-impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                error: self.0.to_string(),
-            }),
-        )
-            .into_response()
+#[derive(Debug)]
+struct AppError {
+    status: StatusCode,
+    error: String,
+}
+
+impl AppError {
+    fn json(status: StatusCode, error: String) -> Self {
+        Self { status, error }
+    }
+
+    fn conflict(error: anyhow::Error) -> Self {
+        Self {
+            status: StatusCode::CONFLICT,
+            error: error.to_string(),
+        }
+    }
+
+    fn internal(error: anyhow::Error) -> Self {
+        Self {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            error: error.to_string(),
+        }
     }
 }
 
-impl<E> From<E> for AppError
-where
-    E: Into<anyhow::Error>,
-{
-    fn from(value: E) -> Self {
-        Self(value.into())
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        (self.status, Json(ErrorResponse { error: self.error })).into_response()
     }
 }
 

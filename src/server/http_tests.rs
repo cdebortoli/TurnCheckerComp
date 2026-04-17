@@ -1,5 +1,6 @@
 use axum::body::to_bytes;
 use axum::http::StatusCode;
+use axum::response::IntoResponse;
 use uuid::Uuid;
 
 use super::parse_json_request;
@@ -11,7 +12,8 @@ async fn json_rejection_includes_unknown_top_level_field() {
         "/sync/connect",
         axum::Json::<SyncConnectRequest>::from_bytes(br#"{"deviceId":"ios","unexpected":true}"#),
     )
-    .unwrap_err();
+    .unwrap_err()
+    .into_response();
 
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
@@ -50,7 +52,8 @@ async fn json_rejection_includes_nested_field_path() {
         "/sync/push",
         axum::Json::<SyncPushRequest>::from_bytes(payload.as_bytes()),
     )
-    .unwrap_err();
+    .unwrap_err()
+    .into_response();
 
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 

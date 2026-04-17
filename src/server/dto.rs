@@ -32,6 +32,7 @@ pub(super) struct SyncConnectResponse {
 pub(super) struct SyncPullRequest {
     #[allow(dead_code)]
     pub device_id: Option<String>,
+    #[allow(dead_code)]
     pub current_session: Option<CurrentSession>,
 }
 
@@ -53,6 +54,7 @@ pub(super) struct SyncAckRequest {
     pub checks: Vec<Uuid>,
     pub comments: Vec<Uuid>,
     pub tags: Vec<Uuid>,
+    #[allow(dead_code)]
     pub current_session: Option<CurrentSession>,
 }
 

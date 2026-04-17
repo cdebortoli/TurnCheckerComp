@@ -20,6 +20,10 @@ impl SyncService {
     }
 
     pub(super) fn pull(&self, request: SyncPullRequest) -> anyhow::Result<SyncPullResponse> {
+        let SyncPullRequest {
+            device_id: _,
+            current_session: _,
+        } = request;
         let connection = database::establish_connection_at(&self.database_path)?;
 
         Ok(SyncPullResponse {
@@ -32,7 +36,7 @@ impl SyncService {
     }
 
     pub(super) fn push(&self, request: SyncPushRequest) -> anyhow::Result<SyncPushResponse> {
-        self.validate_push_request(&request)?;
+        self.validate_received_session(&request.current_session)?;
 
         let connection = database::establish_connection_at(&self.database_path)?;
         let SyncPushRequest {
@@ -104,14 +108,18 @@ impl SyncService {
 
     pub(super) fn ack(&self, request: SyncAckRequest) -> anyhow::Result<SyncAckResponse> {
         let connection = database::establish_connection_at(&self.database_path)?;
+        let SyncAckRequest {
+            device_id: _,
+            checks,
+            comments,
+            tags,
+            current_session: _,
+        } = request;
 
         Ok(SyncAckResponse {
-            checks_marked_sent: database::checks::mark_sent_by_uuids(&connection, &request.checks)?,
-            comments_marked_sent: database::comments::mark_sent_by_uuids(
-                &connection,
-                &request.comments,
-            )?,
-            tags_marked_sent: database::tags::mark_sent_by_uuids(&connection, &request.tags)?,
+            checks_marked_sent: database::checks::mark_sent_by_uuids(&connection, &checks)?,
+            comments_marked_sent: database::comments::mark_sent_by_uuids(&connection, &comments)?,
+            tags_marked_sent: database::tags::mark_sent_by_uuids(&connection, &tags)?,
             server_time: Utc::now(),
         })
     }
@@ -122,9 +130,5 @@ impl SyncService {
     ) -> anyhow::Result<()> {
         let connection = database::establish_connection_at(&self.database_path)?;
         database::current_session::validate_session_match(&connection, received_game_session)
-    }
-
-    pub(super) fn validate_push_request(&self, request: &SyncPushRequest) -> anyhow::Result<()> {
-        self.validate_received_session(&request.current_session)
     }
 }

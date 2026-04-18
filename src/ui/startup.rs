@@ -100,14 +100,17 @@ impl StartupController {
         };
 
         if let Some(unsent_records) = unsent_records {
-            ui.painter()
-                .rect_filled(ui.max_rect(), 0.0, theme.bg_modal_overlay);
-
             let ctx = ui.ctx().clone();
             egui::Window::new(self.i18n.t("startup-unsent-data-title"))
                 .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
                 .collapsible(false)
                 .resizable(false)
+                .frame(
+                    egui::Frame::new()
+                        .fill(theme.bg_secondary)
+                        .inner_margin(theme.spacing_lg)
+                        .corner_radius(theme.corner_radius),
+                )
                 .show(&ctx, |ui| {
                     ui.label(
                         RichText::new(self.i18n.tr(

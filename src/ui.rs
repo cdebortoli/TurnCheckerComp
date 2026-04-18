@@ -309,6 +309,12 @@ impl eframe::App for TurnCheckerApp {
                     ui.add_space(theme.spacing_md);
 
                     if !self.startup.is_ready() {
+                        self.startup.show_restore_modal(
+                            ui,
+                            &mut self.runtime,
+                            &self.pairing_state,
+                            &theme,
+                        );
                         self.startup.show_status(ui, &theme);
                     } else if self.pairing_state.is_paired() {
                         if let Some(action) = self.content.show(ui) {
@@ -317,13 +323,6 @@ impl eframe::App for TurnCheckerApp {
                     } else {
                         self.pairing.show_waiting(ui, &theme);
                     }
-
-                    self.startup.show_restore_modal(
-                        ui,
-                        &mut self.runtime,
-                        &self.pairing_state,
-                        &theme,
-                    );
                 }
             });
     }

@@ -60,6 +60,30 @@ fn pull_and_ack_round_trip_always_includes_current_session() -> Result<()> {
 }
 
 #[test]
+fn connect_metadata_reports_local_changes_and_current_session() -> Result<()> {
+    let temp_dir = std::env::temp_dir().join(format!("turn-checker-{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&temp_dir)?;
+    let db_path = temp_dir.join("sync.db");
+    let service = SyncService::new(db_path.clone());
+    let connection = database::establish_connection_at(&db_path)?;
+
+    let mut local_check = Check::new("Scout");
+    local_check.is_sent = false;
+    database::checks::insert(&connection, &local_check)?;
+
+    let local_session = CurrentSession::new(Some(Uuid::new_v4()), "Civ VII", 12);
+    database::current_session::upsert(&connection, &local_session)?;
+
+    let (has_local_changes, previous_session) = service.connect_metadata()?;
+    assert!(has_local_changes);
+    let previous_session = previous_session.expect("session exists");
+    assert_eq!(previous_session.game_name, "Civ VII");
+    assert_eq!(previous_session.turn_number, 12);
+
+    Ok(())
+}
+
+#[test]
 fn push_upserts_current_session_without_send_state() -> Result<()> {
     let temp_dir = std::env::temp_dir().join(format!("turn-checker-{}", uuid::Uuid::new_v4()));
     std::fs::create_dir_all(&temp_dir)?;

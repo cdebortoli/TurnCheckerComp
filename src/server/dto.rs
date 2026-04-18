@@ -25,6 +25,8 @@ pub(super) struct SyncConnectRequest {
 #[serde(rename_all = "camelCase")]
 pub(super) struct SyncConnectResponse {
     pub ok: bool,
+    pub has_local_changes: bool,
+    pub previous_session: Option<CurrentSession>,
     pub server_time: DateTime<Utc>,
 }
 

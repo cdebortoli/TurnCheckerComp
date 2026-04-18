@@ -145,6 +145,13 @@ impl HttpServer {
         State(state): State<AppState>,
         request: Result<Json<SyncConnectRequest>, JsonRejection>,
     ) -> Result<Json<SyncConnectResponse>, AppError> {
+        // Check if previous data
+        let (has_local_changes, previous_session) = state
+            .service
+            .connect_metadata()
+            .map_err(AppError::internal)?;
+
+        // request
         let request = parse_json_request("/sync/connect", request)?;
         validate_received_session(&state, &request.current_session)?;
         state
@@ -153,6 +160,8 @@ impl HttpServer {
         state.pairing_state.mark_paired();
         Ok(Json(SyncConnectResponse {
             ok: true,
+            has_local_changes,
+            previous_session,
             server_time: Utc::now(),
         }))
     }

@@ -19,6 +19,16 @@ impl SyncService {
         Self { database_path }
     }
 
+    pub(super) fn connect_metadata(&self) -> anyhow::Result<(bool, Option<CurrentSession>)> {
+        let connection = database::establish_connection_at(&self.database_path)?;
+        let has_local_changes = database::checks::count_unsent(&connection)?
+            + database::comments::fetch_unsent(&connection)?.len()
+            + database::tags::fetch_unsent(&connection)?.len()
+            > 0;
+        let current_session = database::current_session::fetch(&connection)?;
+        Ok((has_local_changes, current_session))
+    }
+
     pub(super) fn pull(&self, request: SyncPullRequest) -> anyhow::Result<SyncPullResponse> {
         let SyncPullRequest {
             device_id: _,

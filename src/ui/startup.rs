@@ -51,7 +51,7 @@ impl StartupController {
 
     pub fn ensure_started(&mut self, runtime: &mut Runtime, pairing_state: &server::PairingState) {
         if matches!(self.state, StartupState::Starting) {
-            self.continue_startup(runtime, pairing_state);
+            self.startup_server(runtime, pairing_state);
         }
     }
 
@@ -125,7 +125,7 @@ impl StartupController {
 
                     ui.horizontal(|ui| {
                         if ui.button(self.i18n.t("startup-keep-db-button")).clicked() {
-                            self.continue_startup(runtime, pairing_state);
+                            self.startup_server(runtime, pairing_state);
                         }
 
                         if ui.button(self.i18n.t("startup-reset-db-button")).clicked() {
@@ -136,7 +136,7 @@ impl StartupController {
         }
     }
 
-    fn continue_startup(&mut self, runtime: &mut Runtime, pairing_state: &server::PairingState) {
+    fn startup_server(&mut self, runtime: &mut Runtime, pairing_state: &server::PairingState) {
         if matches!(self.state, StartupState::Ready) {
             return;
         }
@@ -162,7 +162,7 @@ impl StartupController {
         pairing_state: &server::PairingState,
     ) {
         match database::reset_database() {
-            Ok(()) => self.continue_startup(runtime, pairing_state),
+            Ok(()) => self.startup_server(runtime, pairing_state),
             Err(error) => self.state = StartupState::Failed(error.to_string()),
         }
     }

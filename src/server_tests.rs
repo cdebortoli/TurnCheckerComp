@@ -155,16 +155,19 @@ fn push_rejects_mismatched_game_uuid() -> Result<()> {
         &CurrentSession::new(Some(stored_game_uuid), "Stored Game", 2),
     )?;
 
+    let received_game_uuid = Uuid::new_v4();
     let error = service
         .push(SyncPushRequest {
             device_id: None,
             checks: vec![],
             comments: vec![],
             tags: vec![],
-            current_session: Some(CurrentSession::new(Some(Uuid::new_v4()), "Other Game", 4)),
+            current_session: Some(CurrentSession::new(Some(received_game_uuid), "Other Game", 4)),
         })
         .expect_err("push should fail on mismatch");
-    assert!(error.to_string().contains("game uuid mismatch"));
+    let error_message = error.to_string();
+    assert!(!error_message.contains(&stored_game_uuid.to_string()));
+    assert!(!error_message.contains(&received_game_uuid.to_string()));
 
     Ok(())
 }

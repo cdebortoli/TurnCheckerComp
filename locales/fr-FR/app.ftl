@@ -9,6 +9,7 @@ app-minimal-mode-enable-tooltip = Passer à une surcouche compacte
 
 server-stopped-log = Le serveur de synchronisation s'est arrêté : { $error }
 server-invalid-bind-address = Adresse de liaison invalide : { $error }
+database-game-uuid-mismatch = Session de partie incohérente.
 
 notification-url-not-configured = L'URL de notification push n'est pas configurée.
 notification-device-token-unavailable = Le jeton de l'appareil n'est pas encore disponible. Associez l'application iOS et acceptez les autorisations de notifications push.

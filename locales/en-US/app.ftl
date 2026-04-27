@@ -9,6 +9,7 @@ app-minimal-mode-enable-tooltip = Switch to a compact overlay
 
 server-stopped-log = Sync server stopped: { $error }
 server-invalid-bind-address = Invalid bind address: { $error }
+database-game-uuid-mismatch = Game session mismatch.
 
 notification-url-not-configured = Push notification URL is not configured.
 notification-device-token-unavailable = Device token is not available yet. Pair the iOS app and accept push notification permissions.

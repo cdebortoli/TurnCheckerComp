@@ -2,7 +2,7 @@ use anyhow::{bail, Result};
 use rusqlite::{params, Connection, OptionalExtension, Row};
 
 use super::common::parse_uuid;
-use crate::models::CurrentSession;
+use crate::{i18n::I18n, models::CurrentSession};
 
 const SINGLETON_ID: i64 = 1;
 
@@ -75,11 +75,8 @@ pub fn validate_session_match(
     };
 
     if stored_game_uuid != received_game_uuid {
-        bail!(
-            "game uuid mismatch: stored={} received={}",
-            stored_game_uuid,
-            received_game_uuid
-        );
+        let i18n = I18n::system();
+        bail!(i18n.t("database-game-uuid-mismatch"));
     }
 
     Ok(())

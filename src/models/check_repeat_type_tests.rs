@@ -1,5 +1,6 @@
 use super::CheckRepeatType;
 
+// Verifies enum-to-storage mapping for repeat types.
 #[test]
 fn repeat_type_to_storage() {
     assert_eq!(CheckRepeatType::Everytime.to_storage(), ("everytime", None));
@@ -14,6 +15,7 @@ fn repeat_type_to_storage() {
     assert_eq!(CheckRepeatType::Until(4).to_storage(), ("until", Some(4)));
 }
 
+// Verifies storage-to-enum mapping and fallback to `Everytime`.
 #[test]
 fn repeat_type_from_storage() {
     assert_eq!(

@@ -6,6 +6,7 @@ use super::service::SyncService;
 use crate::database;
 use crate::models::{Check, Comment, CommentType, CurrentSession, Tag};
 
+// Ensures pull returns unsent checks and always includes session, even after ack.
 #[test]
 fn pull_and_ack_round_trip_always_includes_current_session() -> Result<()> {
     let temp_dir = std::env::temp_dir().join(format!("turn-checker-{}", uuid::Uuid::new_v4()));
@@ -59,6 +60,7 @@ fn pull_and_ack_round_trip_always_includes_current_session() -> Result<()> {
     Ok(())
 }
 
+// Ensures metadata reports unsent local changes plus existing session.
 #[test]
 fn connect_metadata_reports_local_changes_and_current_session() -> Result<()> {
     let temp_dir = std::env::temp_dir().join(format!("turn-checker-{}", uuid::Uuid::new_v4()));
@@ -83,6 +85,7 @@ fn connect_metadata_reports_local_changes_and_current_session() -> Result<()> {
     Ok(())
 }
 
+// Ensures remote comments/tags/session are upserted and marked sent where applicable.
 #[test]
 fn push_upserts_current_session_without_send_state() -> Result<()> {
     let temp_dir = std::env::temp_dir().join(format!("turn-checker-{}", uuid::Uuid::new_v4()));
@@ -141,6 +144,7 @@ fn push_upserts_current_session_without_send_state() -> Result<()> {
 //     Ok(())
 // }
 
+// Ensures push rejects mismatched game UUID without leaking UUIDs in error.
 #[test]
 fn push_rejects_mismatched_game_uuid() -> Result<()> {
     let temp_dir = std::env::temp_dir().join(format!("turn-checker-{}", uuid::Uuid::new_v4()));

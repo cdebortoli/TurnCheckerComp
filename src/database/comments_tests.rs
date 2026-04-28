@@ -3,6 +3,7 @@ use anyhow::Result;
 use crate::database::connection::establish_in_memory_connection;
 use crate::models::{Comment, CommentType};
 
+// Verifies comment insert/fetch/upsert/delete and sent state.
 #[test]
 fn comment_crud_round_trip() -> Result<()> {
     let connection = establish_in_memory_connection()?;

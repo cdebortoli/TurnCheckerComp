@@ -4,6 +4,7 @@ use uuid::Uuid;
 use crate::database::connection::establish_in_memory_connection;
 use crate::models::CurrentSession;
 
+// Verifies current session upsert/fetch/update.
 #[test]
 fn current_session_round_trip() -> Result<()> {
     let connection = establish_in_memory_connection()?;
@@ -32,6 +33,7 @@ fn current_session_round_trip() -> Result<()> {
     Ok(())
 }
 
+// Ensures new-turn increment happens once and marks session as having new turn.
 #[test]
 fn increment_new_turn_number_if_needed_increments_once() -> Result<()> {
     let connection = establish_in_memory_connection()?;

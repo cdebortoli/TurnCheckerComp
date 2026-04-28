@@ -14,6 +14,7 @@ fn test_i18n() -> I18n {
     I18n::from_language("en-US")
 }
 
+// Ensures external refresh signal marks UI for reload.
 #[test]
 fn external_refresh_marks_content_dirty() {
     let (content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
@@ -29,6 +30,7 @@ fn external_refresh_marks_content_dirty() {
     assert!(!view.content_refresh_rx.has_changed().unwrap());
 }
 
+// Ensures local check status edits clear sent flag.
 #[test]
 fn local_status_update_marks_check_unsent() {
     let mut check = Check::new("Scout");
@@ -40,6 +42,7 @@ fn local_status_update_marks_check_unsent() {
     assert!(!updated.is_sent);
 }
 
+// Ensures local comment edits clear sent flag.
 #[test]
 fn local_comment_update_marks_comment_unsent() {
     let mut comment = Comment::new(CommentType::Game, "Synced note");
@@ -51,6 +54,7 @@ fn local_comment_update_marks_comment_unsent() {
     assert!(!updated.is_sent);
 }
 
+// Ensures next-turn click opens confirmation when session exists.
 #[test]
 fn next_turn_click_opens_confirmation_when_session_is_available() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
@@ -63,6 +67,7 @@ fn next_turn_click_opens_confirmation_when_session_is_available() {
     assert!(view.error_message.is_none());
 }
 
+// Ensures confirmation counts unchecked mandatory turn checks only.
 #[test]
 fn next_turn_click_counts_unchecked_mandatory_turn_checks() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
@@ -89,6 +94,7 @@ fn next_turn_click_counts_unchecked_mandatory_turn_checks() {
     assert_eq!(view.new_turn_confirmation_open, Some(1));
 }
 
+// Ensures missing session blocks next-turn flow with error.
 #[test]
 fn next_turn_click_sets_error_when_session_is_missing() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
@@ -103,6 +109,7 @@ fn next_turn_click_sets_error_when_session_is_missing() {
     );
 }
 
+// Ensures wait mode exits after same-game turn increases.
 #[test]
 fn next_turn_wait_unlocks_after_turn_increase_for_same_game() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
@@ -121,6 +128,7 @@ fn next_turn_wait_unlocks_after_turn_increase_for_same_game() {
     assert_eq!(view.mode, ContentMode::General);
 }
 
+// Ensures wait mode remains if turn does not increase.
 #[test]
 fn next_turn_wait_stays_locked_without_turn_increase() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
@@ -135,6 +143,7 @@ fn next_turn_wait_stays_locked_without_turn_increase() {
     assert!(view.is_waiting_for_next_turn());
 }
 
+// Ensures wait mode remains if game UUID changes.
 #[test]
 fn next_turn_wait_stays_locked_for_different_game_uuid() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
@@ -148,6 +157,7 @@ fn next_turn_wait_stays_locked_for_different_game_uuid() {
     assert!(view.is_waiting_for_next_turn());
 }
 
+// Ensures cancel exits wait mode and stores error.
 #[test]
 fn cancel_next_turn_wait_clears_wait_state_and_sets_error() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
@@ -162,6 +172,7 @@ fn cancel_next_turn_wait_clears_wait_state_and_sets_error() {
     assert_eq!(view.error_message.as_deref(), Some("push failed"));
 }
 
+// Ensures selecting checklist check opens edit/new-check mode.
 #[test]
 fn selecting_check_from_editable_list_opens_edit_mode() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
@@ -174,6 +185,7 @@ fn selecting_check_from_editable_list_opens_edit_mode() {
     assert!(view.error_message.is_none());
 }
 
+// Ensures back returns to source checks from edit mode.
 #[test]
 fn navigating_back_from_source_check_edit_returns_to_source_checks() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);
@@ -187,6 +199,7 @@ fn navigating_back_from_source_check_edit_returns_to_source_checks() {
     assert!(view.error_message.is_none());
 }
 
+// Ensures cancel returns to source checks from edit mode.
 #[test]
 fn cancelling_source_check_edit_returns_to_source_checks() {
     let (_content_refresh_tx, content_refresh_rx) = watch::channel(0_u64);

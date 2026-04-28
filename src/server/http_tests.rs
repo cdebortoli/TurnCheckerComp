@@ -6,6 +6,7 @@ use uuid::Uuid;
 use super::parse_json_request;
 use crate::server::dto::{SyncConnectRequest, SyncPushRequest};
 
+// Ensures strict JSON rejection reports unknown top-level field.
 #[tokio::test]
 async fn json_rejection_includes_unknown_top_level_field() {
     let response = parse_json_request(
@@ -22,6 +23,7 @@ async fn json_rejection_includes_unknown_top_level_field() {
     assert!(body.contains("unknown field `unexpected`"));
 }
 
+// Ensures strict JSON rejection reports nested field path like `checks[0]`.
 #[tokio::test]
 async fn json_rejection_includes_nested_field_path() {
     let payload = format!(

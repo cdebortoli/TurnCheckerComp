@@ -3,6 +3,7 @@ use anyhow::Result;
 use crate::database::connection::establish_in_memory_connection;
 use crate::models::Tag;
 
+// Verifies tag insert/fetch/upsert/delete.
 #[test]
 fn tag_crud_round_trip() -> Result<()> {
     let connection = establish_in_memory_connection()?;

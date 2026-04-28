@@ -9,6 +9,7 @@ use crate::database::checks;
 use crate::database::current_session;
 use crate::models::{Check, CurrentSession};
 
+// Ensures startup detects unsent local records and requests user decision.
 #[test]
 fn startup_state_detects_unsent_records() -> Result<()> {
     let temp_dir = std::env::temp_dir().join(format!("turn-checker-db-{}", uuid::Uuid::new_v4()));
@@ -34,6 +35,7 @@ fn startup_state_detects_unsent_records() -> Result<()> {
     Ok(())
 }
 
+// Ensures clean existing DB is reset on startup inspection.
 #[test]
 fn startup_state_resets_existing_database_without_unsent_records() -> Result<()> {
     let temp_dir = std::env::temp_dir().join(format!(
@@ -63,6 +65,7 @@ fn startup_state_resets_existing_database_without_unsent_records() -> Result<()>
     Ok(())
 }
 
+// Ensures reset clears checks/session and recreates schema.
 #[test]
 fn reset_database_recreates_empty_schema() -> Result<()> {
     let temp_dir =
@@ -86,6 +89,7 @@ fn reset_database_recreates_empty_schema() -> Result<()> {
     Ok(())
 }
 
+// Ensures debug seed helper inserts unsent checks only when called.
 #[test]
 fn debug_unsent_check_is_inserted_only_when_explicitly_requested() -> Result<()> {
     let connection = establish_in_memory_connection()?;
@@ -100,6 +104,7 @@ fn debug_unsent_check_is_inserted_only_when_explicitly_requested() -> Result<()>
     Ok(())
 }
 
+// Ensures normal reopen does not seed debug rows.
 #[test]
 fn reopening_existing_database_does_not_add_rows_when_debug_seed_is_disabled() -> Result<()> {
     let temp_dir =

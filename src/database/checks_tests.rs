@@ -5,6 +5,7 @@ use crate::database::tags;
 use crate::models::check_source_type::CheckSourceType;
 use crate::models::{Check, CheckRepeatType, Tag};
 
+// Verifies check insert/fetch/update/delete, including source, repeat type, tag, sent state.
 #[test]
 fn check_crud_round_trip() -> Result<()> {
     let connection = establish_in_memory_connection()?;
@@ -47,6 +48,7 @@ fn check_crud_round_trip() -> Result<()> {
     Ok(())
 }
 
+// Ensures a new check defaults to `Game` source after storage.
 #[test]
 fn default_source_round_trips() -> Result<()> {
     let connection = establish_in_memory_connection()?;
@@ -61,6 +63,7 @@ fn default_source_round_trips() -> Result<()> {
     Ok(())
 }
 
+// Ensures `fetch_all` returns global-game and turn checks, excluding regular game checks, ordered by priority/position.
 #[test]
 fn fetch_all_returns_only_global_game_and_turn_checks() -> Result<()> {
     let connection = establish_in_memory_connection()?;
@@ -104,6 +107,7 @@ fn fetch_all_returns_only_global_game_and_turn_checks() -> Result<()> {
     Ok(())
 }
 
+// Ensures upserted global-game checks remain prioritized/visible through `fetch_all`.
 #[test]
 fn upsert_preserves_global_game_priority_in_fetch_all() -> Result<()> {
     let connection = establish_in_memory_connection()?;
@@ -138,6 +142,7 @@ fn upsert_preserves_global_game_priority_in_fetch_all() -> Result<()> {
     Ok(())
 }
 
+// Verifies source-specific filtering.
 #[test]
 fn fetch_by_source_returns_only_requested_source() -> Result<()> {
     let connection = establish_in_memory_connection()?;
@@ -164,6 +169,7 @@ fn fetch_by_source_returns_only_requested_source() -> Result<()> {
     Ok(())
 }
 
+// Verifies unsent count ignores sent checks.
 #[test]
 fn count_unsent_returns_only_unsent_checks() -> Result<()> {
     let connection = establish_in_memory_connection()?;

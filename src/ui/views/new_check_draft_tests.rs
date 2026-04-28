@@ -7,6 +7,7 @@ fn test_i18n() -> I18n {
     I18n::from_language("en-US")
 }
 
+// Ensures default draft converts to an every-time check.
 #[test]
 fn draft_builds_everytime_check() {
     let draft = NewCheckDraft {
@@ -22,6 +23,7 @@ fn draft_builds_everytime_check() {
     assert_eq!(check.tag_uuid, None);
 }
 
+// Ensures repeat value must be positive.
 #[test]
 fn draft_requires_positive_repeat_value() {
     let draft = NewCheckDraft {
@@ -37,6 +39,7 @@ fn draft_requires_positive_repeat_value() {
     assert!(error.contains("at least"));
 }
 
+// Ensures repeat value max is enforced.
 #[test]
 fn draft_requires_repeat_value_at_most_9999() {
     let draft = NewCheckDraft {
@@ -52,6 +55,7 @@ fn draft_requires_repeat_value_at_most_9999() {
     assert!(error.contains("9999"));
 }
 
+// Ensures specific repeat/tag values are preserved.
 #[test]
 fn draft_builds_non_default_repeat_type() {
     let tag_uuid = Uuid::new_v4();
@@ -70,6 +74,7 @@ fn draft_builds_non_default_repeat_type() {
     assert_eq!(check.tag_uuid, Some(tag_uuid));
 }
 
+// Ensures selecting turn source locks repeat to current turn.
 #[test]
 fn selecting_turn_source_locks_repeat_to_current_turn() {
     let session = CurrentSession::new(None, "Civ VI", 5);
@@ -87,6 +92,7 @@ fn selecting_turn_source_locks_repeat_to_current_turn() {
     assert_eq!(draft.repeat_value, "5");
 }
 
+// Ensures turn-source check uses current session turn.
 #[test]
 fn turn_source_builds_specific_repeat_from_current_session() {
     let session = CurrentSession::new(None, "Civ VI", 7);
@@ -105,6 +111,7 @@ fn turn_source_builds_specific_repeat_from_current_session() {
     assert_eq!(check.repeat_case, CheckRepeatType::Specific(7));
 }
 
+// Ensures turn-source draft fails without session.
 #[test]
 fn turn_source_requires_current_session() {
     let draft = NewCheckDraft {
@@ -120,6 +127,7 @@ fn turn_source_requires_current_session() {
     assert_eq!(error, "No current session is available yet.");
 }
 
+// Ensures editing preserves id/uuid/position/source and clears sent flag.
 #[test]
 fn editing_existing_check_preserves_identity_and_marks_unsent() {
     let mut existing = Check::new("Scout");

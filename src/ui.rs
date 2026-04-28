@@ -93,6 +93,9 @@ impl TurnCheckerApp {
                 .fit_to_exact_size(egui::vec2(24.0, 24.0)),
             );
             ui.heading(RichText::new(self.i18n.t("app-title")).color(theme.text_primary));
+            ui.label(
+                RichText::new(format!("v{}", env!("CARGO_PKG_VERSION"))).color(theme.text_muted),
+            );
 
             let button_size = egui::vec2(20.0, 20.0);
             let available_width = ui.available_width().max(button_size.x);

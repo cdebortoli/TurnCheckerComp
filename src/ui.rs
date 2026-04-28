@@ -220,7 +220,7 @@ impl TurnCheckerApp {
         let fill_override = minimal_mode
             .then(|| Self::with_alpha(theme.bg_turn_card, MINIMAL_MODE_BUTTON_BG_ALPHA));
 
-        ui.add(round_icon_button(
+        let response = ui.add(round_icon_button(
             theme,
             size,
             minimal_mode,
@@ -246,12 +246,13 @@ impl TurnCheckerApp {
                     );
                 }
             },
-        ))
-        .on_hover_text(if minimal_mode {
-            i18n.t("app-minimal-mode-disable-tooltip")
+        ));
+
+        if minimal_mode {
+            response
         } else {
-            i18n.t("app-minimal-mode-enable-tooltip")
-        })
+            response.on_hover_text(i18n.t("app-minimal-mode-enable-tooltip"))
+        }
     }
 
     fn show_minimal_view(&mut self, ui: &mut egui::Ui, theme: &theme::Theme) {

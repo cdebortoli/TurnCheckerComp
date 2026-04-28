@@ -6,7 +6,6 @@ pub struct Theme {
     pub bg_secondary: Color32,
     pub bg_list: Color32,
     pub bg_list_element: Color32,
-    pub bg_modal_overlay: Color32,
     pub bg_turn_card: Color32,
 
     // Text
@@ -54,7 +53,6 @@ impl Theme {
             bg_secondary: Color32::from_rgb(44, 44, 46),
             bg_list: Color32::from_rgb(36, 36, 38),
             bg_list_element: Color32::from_rgb(54, 54, 56),
-            bg_modal_overlay: Color32::from_rgba_premultiplied(0, 0, 0, 180),
             bg_turn_card: Color32::from_rgb(44, 44, 46),
 
             // Text
@@ -102,7 +100,6 @@ impl Theme {
             bg_secondary: Color32::from_rgb(255, 255, 255),
             bg_list: Color32::from_rgb(242, 242, 247),
             bg_list_element: Color32::from_rgb(255, 255, 255),
-            bg_modal_overlay: Color32::from_rgba_premultiplied(0, 0, 0, 100),
             bg_turn_card: Color32::from_rgb(255, 255, 255),
 
             // Text

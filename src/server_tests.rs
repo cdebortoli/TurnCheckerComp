@@ -166,7 +166,11 @@ fn push_rejects_mismatched_game_uuid() -> Result<()> {
             checks: vec![],
             comments: vec![],
             tags: vec![],
-            current_session: Some(CurrentSession::new(Some(received_game_uuid), "Other Game", 4)),
+            current_session: Some(CurrentSession::new(
+                Some(received_game_uuid),
+                "Other Game",
+                4,
+            )),
         })
         .expect_err("push should fail on mismatch");
     let error_message = error.to_string();
